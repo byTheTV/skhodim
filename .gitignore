@@ -1,2 +1,4 @@
 target/
 src/test/resources/helios.local.properties
+*.log
+
