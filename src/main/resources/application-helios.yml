@@ -1,0 +1,15 @@
+# Профиль для запуска на сервере helios (ssh helios.se.ifmo.ru), где приложение
+# обращается к PostgreSQL напрямую по имени хоста "pg" и работает в личной схеме.
+# Схема и пароль передаются переменными окружения, чтобы не коммитить секреты:
+#   SKHODIM_SCHEMA=s467667 SKHODIM_DB_PASSWORD=*** java -jar skhodim.jar --spring.profiles.active=helios
+spring:
+  datasource:
+    url: jdbc:postgresql://pg:5432/studs?currentSchema=${SKHODIM_SCHEMA},public
+    username: ${SKHODIM_SCHEMA}
+    password: ${SKHODIM_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+
+app:
+  schema: ${SKHODIM_SCHEMA}

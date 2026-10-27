@@ -1,0 +1,13 @@
+# Локальная база (отдельная БД skhodim_course), см. sql/README.md.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/skhodim_course?currentSchema=skhodim,public
+    username: postgres
+    password: ${SKHODIM_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      schema: skhodim
+
+app:
+  schema: skhodim
