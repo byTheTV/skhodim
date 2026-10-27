@@ -24,7 +24,9 @@ public class ReactionIntentionRepository {
     }
 
     public void setReaction(long userId, long eventId, String kind, boolean isPublic) {
-        jdbc.update("SELECT set_reaction(?, ?, ?, ?)", userId, eventId, kind, isPublic);
+        // set_reaction возвращает void: SELECT из такой функции даёт одну строку без
+        // обновлённых строк, поэтому используется query(), а не update() (ругается PgJDBC).
+        jdbc.query("SELECT set_reaction(?, ?, ?, ?)", rs -> null, userId, eventId, kind, isPublic);
     }
 
     public long setIntention(long userId, long sessionId, boolean enabled) {

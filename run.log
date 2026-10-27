@@ -1,0 +1,44 @@
+Текущая кодовая страница: 1251
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< ru.ifmo:skhodim >---------------------------
+[INFO] Building skhodim 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.5:run (default-cli) > test-compile @ skhodim >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ skhodim ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ skhodim ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ skhodim ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ skhodim ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.5:run (default-cli) < test-compile @ skhodim <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.5:run (default-cli) @ skhodim ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.5)
+
+2026-10-27T19:06:46.305+03:00  INFO 24460 --- [skhodim] [           main] ru.ifmo.skhodim.SkhodimApplication       : Starting SkhodimApplication using Java 23 with PID 24460 (D:\_projs\Новая папка\target\classes started by vladi in D:\_projs\Новая папка)
+2026-10-27T19:06:46.307+03:00  INFO 24460 --- [skhodim] [           main] ru.ifmo.skhodim.SkhodimApplication       : The following 1 profile is active: "local"
+2026-10-27T19:06:47.130+03:00  INFO 24460 --- [skhodim] [           main] ru.ifmo.skhodim.SkhodimApplication       : Started SkhodimApplication in 1.201 seconds (process running for 1.523)
+2026-10-27T19:06:47.131+03:00  INFO 24460 --- [skhodim] [   scheduling-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-27T19:06:47.351+03:00  INFO 24460 --- [skhodim] [   scheduling-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@17082918
+2026-10-27T19:06:47.352+03:00  INFO 24460 --- [skhodim] [   scheduling-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
