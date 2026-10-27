@@ -1,0 +1,106 @@
+@startuml architecture
+title ИС «Сходим» — диаграмма классов общей архитектуры (Этап 3)
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam wrapWidth 160
+skinparam class {
+  BackgroundColor<<database>> #FFF8E1
+  BackgroundColor<<component>> #E8F5E9
+  BackgroundColor<<utility>> #ECEFF1
+}
+hide empty members
+left to right direction
+
+package "Уровень представления (Этап 4)" as presentation #EEEEEE {
+  class "Web UI / REST-контроллеры" as UiStub
+  note right of UiStub
+    Появится на этапе 4:
+    Spring MVC/REST-контроллеры,
+    DTO запросов/ответов.
+  end note
+}
+
+package "Уровень бизнес-логики" as business {
+  class UserService
+  class CatalogService
+  class ReactionService
+  class CompanionService
+  class FeedbackService
+  class ModerationService
+  class ImportService
+  class RequestExpirationScheduler <<component>>
+  class BusinessRuleException
+  class NotFoundException
+}
+
+package "Уровень хранения" as storage {
+  class UserRepository
+  class CatalogRepository
+  class ReactionIntentionRepository
+  class CompanionRepository
+  class FeedbackRepository
+  class ModerationRepository
+  class ImportRepository
+  class RowMappers <<utility>>
+  class MoreRowMappers <<utility>>
+}
+
+package "Доменная модель (22 сущности)" as domain {
+  class AppUser
+  class UserProfile
+  class Category
+  class Tag
+  class Place
+  class Event
+  class EventSession
+  class EventReaction
+  class EventIntention
+  class IntentionPeriod
+  class CompanionRequest
+  class Conversation
+  class Message
+  class EventFeedback
+  class Notification
+  class Report
+  class ImportRun
+  class CatalogEntry
+  class RecommendedEvent
+  class ConversationParticipant
+}
+
+package "PostgreSQL (Этап 2)" as db {
+  class "JdbcTemplate" as Jdbc <<framework>>
+  class "pl/pgsql функции\nи процедуры" as Functions <<database>>
+  class "22 таблицы\napp_schema" as Tables <<database>>
+}
+
+UiStub ..> business : будет вызывать\n(Этап 4)
+
+UserService --> UserRepository
+CatalogService --> CatalogRepository
+ReactionService --> ReactionIntentionRepository
+CompanionService --> CompanionRepository
+FeedbackService --> FeedbackRepository
+ModerationService --> ModerationRepository
+ImportService --> ImportRepository
+RequestExpirationScheduler --> CompanionService : expireRequests()
+
+business ..> BusinessRuleException
+business ..> NotFoundException
+
+storage ..> Jdbc
+Jdbc --> Functions : CALL /\nSELECT function(...)
+Functions --> Tables
+
+UserRepository ..> RowMappers
+CatalogRepository ..> RowMappers
+ReactionIntentionRepository ..> MoreRowMappers
+CompanionRepository ..> MoreRowMappers
+FeedbackRepository ..> MoreRowMappers
+ModerationRepository ..> MoreRowMappers
+
+storage --> domain : маппинг строк\nResultSet -> record
+
+EventIntention --> IntentionPeriod : история периодов
+
+@enduml
