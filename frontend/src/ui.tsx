@@ -307,18 +307,40 @@ function PosterPattern({ seed, color }: { seed: number; color: string }) {
   );
 }
 
-export function Cover({ event, className }: {
+/** Постер из кэша показывается сразу, остальные плавно проявляются, когда загрузятся. */
+function markLoaded(img: HTMLImageElement | null) {
+  if (img?.complete && img.naturalWidth > 0) img.classList.add('is-loaded');
+}
+
+export function Cover({ event, className, priority }: {
   event: Pick<EventSummary, 'eventId' | 'coverUrl' | 'categories' | 'title'>;
   className?: string;
+  /** Задан у карточек, которые видны или вот-вот появятся: такой постер грузится сразу, а не лениво. */
+  priority?: 'high' | 'low';
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [event.coverUrl]);
   const style = coverStyle(event.categories);
   const Icon = style.icon;
+  const hasPhoto = Boolean(event.coverUrl) && !failed;
   return (
-    <div className={`cover ${className ?? ''}`} style={{ background: style.bg, color: style.fg }}>
-      {event.coverUrl && !failed ? (
-        <img src={event.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+    <div
+      className={`cover ${hasPhoto ? 'cover-photo' : ''} ${className ?? ''}`}
+      style={hasPhoto ? { color: style.fg } : { background: style.bg, color: style.fg }}
+    >
+      {hasPhoto ? (
+        <img
+          key={event.coverUrl}
+          ref={markLoaded}
+          // Атрибуты до src: загрузка начинается, как только он задан. Этот React ещё не знает fetchPriority.
+          {...(priority ? { fetchpriority: priority } : {})}
+          loading={priority ? 'eager' : 'lazy'}
+          referrerPolicy="no-referrer"
+          src={event.coverUrl!}
+          alt=""
+          onLoad={(e) => e.currentTarget.classList.add('is-loaded')}
+          onError={() => setFailed(true)}
+        />
       ) : (
         <>
           <PosterPattern seed={event.eventId} color={style.accent} />

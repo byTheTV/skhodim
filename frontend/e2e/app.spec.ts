@@ -138,6 +138,30 @@ test('свайп: лайк, пропуск, возврат карточки, ж�
   await page.context().close();
 });
 
+test('свайп: следующая карточка становится верхней тем же элементом, без мелькания', async ({ browser }) => {
+  const page = await pageAs(browser, 'demo7@example.org');
+  await page.goto('/');
+  await expect(page.getByTestId('swipe-card')).toHaveCount(1);
+  await page.locator('.swipe-card:not(.is-active)').first().evaluate((el) => { el.setAttribute('data-next', ''); });
+
+  await page.getByRole('button', { name: 'Пропуск' }).click();
+  const state = await page.evaluate(() => {
+    const next = document.querySelector<HTMLElement>('[data-next]')!;
+    const leaving = [...document.querySelectorAll<HTMLElement>('.swipe-card.is-active')].find((c) => c !== next);
+    return {
+      promoted: next.classList.contains('is-active'),
+      opacity: getComputedStyle(next).opacity,
+      nextZ: Number(getComputedStyle(next).zIndex),
+      leavingZ: leaving ? Number(getComputedStyle(leaving).zIndex) : null,
+    };
+  });
+  expect(state.promoted).toBe(true);
+  expect(state.opacity).toBe('1');
+  if (state.leavingZ !== null) expect(state.leavingZ).toBeGreaterThan(state.nextZ);
+  await expect(page.getByTestId('swipe-card')).toHaveCount(1);
+  await page.context().close();
+});
+
 test('поиск и фильтры: текст, бесплатные, пустой результат, сброс', async ({ page }) => {
   await page.goto('/search');
   await page.getByLabel('Поиск событий').fill('кинопоказ');

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
@@ -12,25 +12,39 @@ import { Button, Chip, Cover, coverStyle, EmptyState, ErrorBlock, EventTags, Ske
 
 const SWIPE_DISTANCE = 110;
 const PAGE_SIZE = 20;
+/** Сколько карточек лежит в стопке: верхняя, видимая под ней и ещё одна, у которой постер уже готов. */
+const STACK_SIZE = 3;
+/** Постеры следующих за стопкой карточек загружаются заранее. */
+const PRELOAD_SIZE = 5;
 
-/** Карточка улетает в ту сторону, куда её смахнули, с разворотом. */
+const SPRING = { type: 'spring' as const, stiffness: 380, damping: 26 };
+
+/**
+ * Карточка живёт в стопке одним и тем же элементом и только меняет позу, поэтому постер при смене карточки
+ * не создаётся заново и не мелькает. Улетающая идёт поверх всех, а новая уже лежит под ней непрозрачной.
+ */
 const cardVariants = {
-  enter: { opacity: 0, scale: 0.9, y: 16 },
-  center: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring' as const, stiffness: 380, damping: 26 } },
+  under: { x: 0, opacity: 1, scale: 0.96, y: 8, rotateZ: 3, transition: SPRING },
+  center: { x: 0, opacity: 1, scale: 1, y: 0, rotateZ: 0, transition: SPRING },
+  returning: (direction: number) => ({ x: direction * 760, opacity: 0 }),
   exit: (direction: number) => ({
     x: direction * 760,
     rotate: direction * 26,
     opacity: 0,
-    transition: { duration: 0.32 },
+    zIndex: STACK_SIZE + 1,
+    transition: { duration: 0.32, zIndex: { duration: 0 }, opacity: { delay: 0.14, duration: 0.18 } },
   }),
+  gone: { opacity: 0, transition: { duration: 0 } },
 };
 
-const SwipeCard = forwardRef<HTMLElement, {
+function SwipeCard({ event, depth, direction, onDecide, onOpen }: {
   event: EventSummary;
+  depth: number;
   direction: number;
   onDecide: (kind: 'LIKE' | 'SKIP') => void;
   onOpen: () => void;
-}>(function SwipeCard({ event, direction, onDecide, onOpen }, ref) {
+}) {
+  const active = depth === 0;
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 300], [-16, 16]);
   const likeOpacity = useTransform(x, [30, SWIPE_DISTANCE], [0, 1]);
@@ -45,43 +59,48 @@ const SwipeCard = forwardRef<HTMLElement, {
 
   return (
     <motion.article
-      ref={ref}
-      className={`swipe-card ${hasPhoto ? 'swipe-card-photo' : ''}`}
+      className={`swipe-card ${active ? 'is-active' : ''} ${hasPhoto ? 'swipe-card-photo' : ''}`}
+      aria-hidden={active ? undefined : true}
       style={{
         x,
         rotate,
+        zIndex: STACK_SIZE - depth,
         '--card-bg': hasPhoto ? '#14062E' : style.bg,
         '--card-fg': hasPhoto ? '#FFFFFF' : style.fg,
       } as unknown as CSSProperties}
-      drag="x"
+      drag={active ? 'x' : false}
       dragSnapToOrigin
       dragElastic={0.9}
       onDragEnd={onDragEnd}
       custom={direction}
       variants={cardVariants}
-      initial="enter"
-      animate="center"
-      exit="exit"
-      data-testid="swipe-card"
+      initial={active ? 'returning' : 'under'}
+      animate={active ? 'center' : 'under'}
+      exit={active ? 'exit' : 'gone'}
+      data-testid={active ? 'swipe-card' : undefined}
     >
-      <Cover event={event} className="swipe-cover" />
-      <div className="swipe-scrim" aria-hidden />
-      <motion.div className="stamp stamp-like" style={{ opacity: likeOpacity }} aria-hidden>ЛАЙК!</motion.div>
-      <motion.div className="stamp stamp-skip" style={{ opacity: skipOpacity }} aria-hidden>МИМО</motion.div>
-      <div className="price-sticker">{price(event)}</div>
-      <div className="swipe-body">
-        <EventTags event={event} />
-        <h2>{event.title}</h2>
-        <p className="line-strong">{eventDate(event.startsAt, event.endsAt)}</p>
-        <p className="line">{place(event)}</p>
-        {event.description && event.description !== event.title && <p className="swipe-desc">{event.description}</p>}
-        <button type="button" className="link-btn" onClick={onOpen}>
-          Подробнее о событии <ArrowRight aria-hidden />
-        </button>
-      </div>
+      <Cover event={event} className="swipe-cover" priority={active ? 'high' : 'low'} />
+      {active && (
+        <div className="swipe-face">
+          <div className="swipe-scrim" aria-hidden />
+          <motion.div className="stamp stamp-like" style={{ opacity: likeOpacity }} aria-hidden>ЛАЙК!</motion.div>
+          <motion.div className="stamp stamp-skip" style={{ opacity: skipOpacity }} aria-hidden>МИМО</motion.div>
+          <div className="price-sticker">{price(event)}</div>
+          <div className="swipe-body">
+            <EventTags event={event} />
+            <h2>{event.title}</h2>
+            <p className="line-strong">{eventDate(event.startsAt, event.endsAt)}</p>
+            <p className="line">{place(event)}</p>
+            {event.description && event.description !== event.title && <p className="swipe-desc">{event.description}</p>}
+            <button type="button" className="link-btn" onClick={onOpen}>
+              Подробнее о событии <ArrowRight aria-hidden />
+            </button>
+          </div>
+        </div>
+      )}
     </motion.article>
   );
-});
+}
 
 export function Swipe() {
   const { signedIn } = useAuth();
@@ -129,8 +148,31 @@ export function Swipe() {
   }, [feed.data]);
 
   const current = deck[0];
-  const under = deck[1];
   const upNext = deck.slice(1, 4);
+
+  // Запас качается по одному и с низким приоритетом: постер на экране не должен делить канал со всей очередью.
+  const preloaded = useRef(new Set<string>());
+  const preloading = useRef(false);
+  const queue = useRef<string[]>([]);
+  const preloadNext = useCallback(() => {
+    if (preloading.current) return;
+    const url = queue.current.find((u) => !preloaded.current.has(u));
+    if (!url) return;
+    preloaded.current.add(url);
+    preloading.current = true;
+    const image = new Image();
+    image.referrerPolicy = 'no-referrer';
+    image.setAttribute('fetchpriority', 'low');
+    image.onload = image.onerror = () => {
+      preloading.current = false;
+      preloadNext();
+    };
+    image.src = url;
+  }, []);
+  useEffect(() => {
+    queue.current = deck.slice(STACK_SIZE, STACK_SIZE + PRELOAD_SIZE).flatMap((e) => e.coverUrl ?? []);
+    preloadNext();
+  }, [deck, preloadNext]);
 
   const decide = useCallback((kind: 'LIKE' | 'SKIP') => {
     if (!current) return;
@@ -261,19 +303,17 @@ export function Swipe() {
           {current && (
             <>
               <div className="deck" data-current={current.title}>
-                {under && (
-                  <div className="swipe-under" aria-hidden>
-                    <Cover event={under} />
-                  </div>
-                )}
-                <AnimatePresence custom={exitDir} initial={false} mode="popLayout">
-                  <SwipeCard
-                    key={current.eventId}
-                    event={current}
-                    direction={exitDir}
-                    onDecide={decide}
-                    onOpen={() => navigate(`/events/${current.eventId}`)}
-                  />
+                <AnimatePresence custom={exitDir} initial={false}>
+                  {deck.slice(0, STACK_SIZE).map((event, depth) => (
+                    <SwipeCard
+                      key={event.eventId}
+                      event={event}
+                      depth={depth}
+                      direction={exitDir}
+                      onDecide={decide}
+                      onOpen={() => navigate(`/events/${event.eventId}`)}
+                    />
+                  ))}
                 </AnimatePresence>
               </div>
               <div className="swipe-actions">
