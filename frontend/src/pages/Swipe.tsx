@@ -2,26 +2,26 @@ import { forwardRef, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
-import { ArrowRight, Heart, RotateCcw, Search as SearchIcon, SearchX, SlidersHorizontal, Ticket, X } from 'lucide-react';
+import { ArrowRight, Heart, MapPin, Search as SearchIcon, SearchX, SlidersHorizontal, X } from 'lucide-react';
 import { api, type EventSummary } from '../api';
 import { useAuth } from '../auth';
 import { activeFilterCount, FilterSheet, filtersToQuery, NO_FILTERS, useFilters, whenTitle } from '../filters';
-import { price } from '../format';
+import { eventDate, place, price } from '../format';
 import { PageHeader } from '../layout';
-import { Button, Chip, Cover, EmptyState, ErrorBlock, EventMeta, EventTags, GoingLine, Skeleton, useToast } from '../ui';
+import { Button, Chip, Cover, EmptyState, ErrorBlock, EventTags, Skeleton, useToast } from '../ui';
 
 const SWIPE_DISTANCE = 110;
 const PAGE_SIZE = 20;
 
 /** Карточка улетает в ту сторону, куда её смахнули. */
 const cardVariants = {
-  enter: { scale: 0.96, opacity: 0 },
-  center: { scale: 1, opacity: 1 },
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
   exit: (direction: number) => ({
-    x: direction * 520,
-    rotate: direction * 18,
+    x: direction * 480,
+    rotate: direction * 10,
     opacity: 0,
-    transition: { duration: 0.26 },
+    transition: { duration: 0.22 },
   }),
 };
 
@@ -32,7 +32,7 @@ const SwipeCard = forwardRef<HTMLElement, {
   onOpen: () => void;
 }>(function SwipeCard({ event, direction, onDecide, onOpen }, ref) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-240, 240], [-11, 11]);
+  const rotate = useTransform(x, [-240, 240], [-6, 6]);
   const likeOpacity = useTransform(x, [30, SWIPE_DISTANCE], [0, 1]);
   const skipOpacity = useTransform(x, [-SWIPE_DISTANCE, -30], [1, 0]);
 
@@ -57,18 +57,15 @@ const SwipeCard = forwardRef<HTMLElement, {
       exit="exit"
       data-testid="swipe-card"
     >
-      <motion.div className="stamp stamp-like" style={{ opacity: likeOpacity }} aria-hidden>Сходим!</motion.div>
-      <motion.div className="stamp stamp-skip" style={{ opacity: skipOpacity }} aria-hidden>Мимо</motion.div>
+      <motion.div className="stamp stamp-like" style={{ opacity: likeOpacity }} aria-hidden>Лайк</motion.div>
+      <motion.div className="stamp stamp-skip" style={{ opacity: skipOpacity }} aria-hidden>Пропуск</motion.div>
       <Cover event={event} className="swipe-cover" />
       <div className="swipe-body">
         <EventTags event={event} />
         <h2>{event.title}</h2>
-        <EventMeta event={event} />
-        <div className="swipe-price">
-          <Ticket aria-hidden />
-          <b>{price(event)}</b>
-          {event.goingCount > 0 && <GoingLine count={event.goingCount} />}
-        </div>
+        <p className="line-strong">{eventDate(event.startsAt)}</p>
+        <p className="line">{place(event)}</p>
+        <p className="swipe-price">{price(event)}</p>
         {event.description && <p className="swipe-desc">{event.description}</p>}
         <button type="button" className="link-btn link-strong" onClick={onOpen}>
           Подробнее о событии <ArrowRight aria-hidden />
@@ -123,7 +120,6 @@ export function Swipe() {
   }, [feed.data]);
 
   const current = deck[0];
-  const upNext = deck.slice(1, 4);
 
   const decide = useCallback((kind: 'LIKE' | 'SKIP') => {
     if (!current) return;
@@ -180,8 +176,7 @@ export function Swipe() {
   return (
     <div className="page page-swipe">
       <PageHeader
-        title={<span className="logo logo-inline">сходим<span>!</span></span>}
-        sub="Санкт-Петербург"
+        title="Сходим"
         actions={(
           <>
             <Link to="/search" className="icon-btn" aria-label="Поиск"><SearchIcon aria-hidden /></Link>
@@ -193,22 +188,30 @@ export function Swipe() {
         )}
       />
 
+      <div className="city-row">
+        <MapPin aria-hidden />
+        <span>Санкт-Петербург</span>
+        <Link to="/list" className="to-list">
+          <Heart aria-hidden />
+          <span className="chip">В Список</span>
+        </Link>
+      </div>
+
       {count > 0 && (
         <div className="chips chips-row">
-          {filters.when !== 'any' && <Chip tone="violet">{whenTitle(filters)}</Chip>}
-          {filters.categoryIds.length > 0 && <Chip tone="violet">Категорий: {filters.categoryIds.length}</Chip>}
-          {filters.isFree && <Chip tone="violet">Бесплатно</Chip>}
-          {filters.metro && <Chip tone="violet">м. {filters.metro}</Chip>}
-          <button type="button" className="link-btn" onClick={() => setFilters(NO_FILTERS)}>Сбросить</button>
+          {filters.when !== 'any' && <Chip>{whenTitle(filters)}</Chip>}
+          {filters.categoryIds.length > 0 && <Chip>Категорий: {filters.categoryIds.length}</Chip>}
+          {filters.isFree && <Chip>Бесплатно</Chip>}
+          {filters.metro && <Chip>м. {filters.metro}</Chip>}
         </div>
       )}
 
-      <div className="swipe-layout">
-        <div className="deck-column">
-          {loading && <Skeleton rows={1} />}
-          {feed.isError && deck.length === 0 && <ErrorBlock error={feed.error} retry={() => feed.refetch()} />}
-          {empty && (
-            count > 0 ? (
+      <div className="deck-column">
+        {loading && <Skeleton rows={1} />}
+        {feed.isError && deck.length === 0 && <ErrorBlock error={feed.error} retry={() => feed.refetch()} />}
+        {empty && (
+          count > 0 ? (
+            <>
               <EmptyState
                 icon={<SearchX />}
                 title="Пока ничего не нашлось"
@@ -220,63 +223,49 @@ export function Swipe() {
                   </>
                 )}
               />
-            ) : (
-              <EmptyState
-                icon={<Heart />}
-                title={offset > 0 || seen.size > 0 ? 'Вы посмотрели всё' : 'Афиша пока пуста'}
-                text={offset > 0 || seen.size > 0
-                  ? 'Новые события появятся после следующей загрузки афиши.'
-                  : 'События появятся здесь после загрузки реальной афиши модератором.'}
-                action={signedIn ? <Link className="btn btn-primary" to="/list">Открыть мой список</Link> : undefined}
-              />
-            )
-          )}
-
-          {current && (
-            <>
-              <div className="deck" data-current={current.title}>
-                {deck[1] && <div className="swipe-card swipe-card-under" aria-hidden />}
-                <AnimatePresence custom={exitDir} initial={false} mode="popLayout">
-                  <SwipeCard
-                    key={current.eventId}
-                    event={current}
-                    direction={exitDir}
-                    onDecide={decide}
-                    onOpen={() => navigate(`/events/${current.eventId}`)}
-                  />
-                </AnimatePresence>
-              </div>
-              <div className="swipe-actions">
-                <Button onClick={() => decide('SKIP')}><X aria-hidden /> Мимо</Button>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn-big"
-                  aria-label="Вернуть предыдущую карточку"
-                  disabled={!last}
-                  onClick={undo}
-                >
-                  <RotateCcw aria-hidden />
-                </button>
-                <Button variant="primary" onClick={() => decide('LIKE')}><Heart aria-hidden /> Сходим</Button>
-              </div>
-              <p className="hint hint-center">
-                <span className="only-touch">Смахните влево, если мимо, и вправо, если интересно</span>
-                <span className="only-desktop">Стрелки ← и → на клавиатуре тоже работают</span>
-              </p>
+              <p className="hint hint-center">Новые события появляются при обновлении афиши</p>
             </>
-          )}
-        </div>
+          ) : (
+            <EmptyState
+              icon={<Heart />}
+              title={offset > 0 || seen.size > 0 ? 'Вы посмотрели всё' : 'Афиша пока пуста'}
+              text={offset > 0 || seen.size > 0
+                ? 'Новые события появятся после следующего обновления афиши.'
+                : 'События появятся здесь после загрузки реальной афиши.'}
+              action={signedIn ? <Link className="btn btn-primary btn-block" to="/list">Открыть мой список</Link> : undefined}
+            />
+          )
+        )}
 
-        {upNext.length > 0 && (
-          <aside className="up-next only-desktop-block" aria-label="Дальше в ленте">
-            <h2>Дальше в ленте</h2>
-            {upNext.map((e) => (
-              <Link key={e.eventId} to={`/events/${e.eventId}`} className="up-next-item">
-                <Cover event={e} className="up-next-cover" />
-                <span>{e.title}</span>
-              </Link>
-            ))}
-          </aside>
+        {current && (
+          <>
+            <div className="deck" data-current={current.title}>
+              <AnimatePresence custom={exitDir} initial={false} mode="popLayout">
+                <SwipeCard
+                  key={current.eventId}
+                  event={current}
+                  direction={exitDir}
+                  onDecide={decide}
+                  onOpen={() => navigate(`/events/${current.eventId}`)}
+                />
+              </AnimatePresence>
+            </div>
+            <div className="swipe-actions">
+              <Button onClick={() => decide('SKIP')}><X aria-hidden /> Пропуск</Button>
+              <Button variant="primary" onClick={() => decide('LIKE')}><Heart aria-hidden /> Лайк</Button>
+            </div>
+            <div className="swipe-foot">
+              <p className="hint hint-center">
+                <span className="only-touch">Смахните влево — пропуск, вправо — лайк</span>
+                <span className="only-desktop">Стрелка влево — пропуск, вправо — лайк</span>
+              </p>
+              {last && (
+                <button type="button" className="link-btn link-strong" aria-label="Вернуть предыдущую карточку" onClick={undo}>
+                  Вернуть
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 

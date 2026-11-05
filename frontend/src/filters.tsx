@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import { api, type EventQuery } from './api';
 import { customRange, weekendLabel, whenRange, type WhenKey } from './format';
 import { Button, Chip, Sheet, Toggle } from './ui';
@@ -62,6 +63,7 @@ const WHEN: { value: Filters['when']; label: string }[] = [
 ];
 
 export function whenTitle(filters: Filters): string {
+  if (filters.when === 'any') return 'Все даты';
   if (filters.when === 'custom') {
     return [filters.dateFrom, filters.dateTo].filter(Boolean).map((d) => d!.split('-').reverse().join('.')).join(' — ') || 'Свои даты';
   }
@@ -91,13 +93,14 @@ export function FilterSheet({ open, onClose, value, onApply }: {
     }));
 
   return (
-    <Sheet open={open} onClose={onClose} title="Фильтры">
+    <Sheet open={open} onClose={onClose} title="Фильтры" page>
+      <p className="hint">Санкт-Петербург</p>
       <section className="filter-group">
         <h3>Когда</h3>
         <div className="chips">
           {WHEN.map((w) => (
             <Chip key={w.value} active={draft.when === w.value} onClick={() => setDraft({ ...draft, when: w.value })}>
-              {w.label}
+              {w.label}{draft.when === w.value && w.value !== 'any' && <Check aria-hidden />}
             </Chip>
           ))}
         </div>
@@ -121,17 +124,16 @@ export function FilterSheet({ open, onClose, value, onApply }: {
             Все категории
           </Chip>
           {categories.data?.map((c) => (
-            <Chip key={c.id} active={draft.categoryIds.includes(c.id)} onClick={() => toggleCategory(c.id)}>{c.name}</Chip>
+            <Chip key={c.id} active={draft.categoryIds.includes(c.id)} onClick={() => toggleCategory(c.id)}>
+              {c.name}{draft.categoryIds.includes(c.id) && <Check aria-hidden />}
+            </Chip>
           ))}
         </div>
       </section>
       <section className="filter-group">
         <label className="field">
           <h3>Метро</h3>
-          <select
-            value={draft.metro ?? ''}
-            onChange={(e) => setDraft({ ...draft, metro: e.target.value || null })}
-          >
+          <select value={draft.metro ?? ''} onChange={(e) => setDraft({ ...draft, metro: e.target.value || null })}>
             <option value="">Любая станция</option>
             {metros.data?.map((m) => <option key={m.metro} value={m.metro}>{m.metro}</option>)}
           </select>
@@ -142,11 +144,7 @@ export function FilterSheet({ open, onClose, value, onApply }: {
           <h3>Только бесплатные</h3>
           <p className="hint">Без входного билета</p>
         </div>
-        <Toggle
-          label="Только бесплатные"
-          checked={draft.isFree}
-          onChange={(isFree) => setDraft({ ...draft, isFree })}
-        />
+        <Toggle label="Только бесплатные" checked={draft.isFree} onChange={(isFree) => setDraft({ ...draft, isFree })} />
       </section>
       <div className="sheet-actions">
         <Button variant="primary" block onClick={() => { onApply(draft); onClose(); }}>Применить фильтры</Button>

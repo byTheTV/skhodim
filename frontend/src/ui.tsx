@@ -5,9 +5,12 @@ import {
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation } from '@tanstack/react-query';
-import { AlertTriangle, Calendar, ChevronRight, Flag, Loader2, MapPin, Users, X } from 'lucide-react';
+import {
+  AlertTriangle, ArrowLeft, Baby, BookOpen, Brush, ChevronRight, Dumbbell, Film, Flag, Footprints, Image as ImageIcon,
+  Loader2, Mic, Music, Palette, PartyPopper, Sparkles, Theater, X, type LucideIcon,
+} from 'lucide-react';
 import { api, type EventSummary } from './api';
-import { eventDate, place, plural, price } from './format';
+import { eventDate, place, price } from './format';
 
 /* ---------- Уведомления внизу экрана ---------- */
 
@@ -32,9 +35,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <motion.div
               key={t.id}
               className={`toast toast-${t.tone}`}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
+              exit={{ opacity: 0, y: 12 }}
             >
               {t.text}
             </motion.div>
@@ -48,7 +51,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 /* ---------- Базовые элементы ---------- */
 
 export function Button({ variant = 'secondary', loading, block, children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
   block?: boolean;
 }) {
@@ -70,13 +73,12 @@ export function Badge({ count }: { count: number }) {
   return <span className="badge" aria-label={`Новых: ${count}`}>{count > 99 ? '99+' : count}</span>;
 }
 
-export function Chip({ children, active, onClick, tone }: {
+export function Chip({ children, active, onClick }: {
   children: ReactNode;
   active?: boolean;
   onClick?: () => void;
-  tone?: 'lime' | 'coral' | 'violet';
 }) {
-  const cls = `chip ${active ? 'chip-active' : ''} ${tone ? `chip-${tone}` : ''}`;
+  const cls = `chip ${active ? 'chip-active' : ''}`;
   if (onClick) {
     return <button type="button" className={cls} aria-pressed={Boolean(active)} onClick={onClick}>{children}</button>;
   }
@@ -162,31 +164,31 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-/* ---------- Аватар: стикер вместо загрузки фото ---------- */
+/* ---------- Аватар: первая буква имени на мягком цвете ---------- */
 
 export const STICKER_COUNT = 8;
-const STICKERS: [string, string][] = [
-  ['#6B3DF5', '#C6F135'],
-  ['#FF5A36', '#FFF4E0'],
-  ['#C6F135', '#1B1240'],
-  ['#FF4D8D', '#FFF4E0'],
-  ['#FFC83D', '#1B1240'],
-  ['#1B1240', '#C6F135'],
-  ['#00B8A9', '#FFF4E0'],
-  ['#B69CFF', '#1B1240'],
+const AVATAR_COLORS: [string, string][] = [
+  ['#e4dffe', '#3f25c4'],
+  ['#ffe2da', '#a8320f'],
+  ['#dff3d8', '#2c6b1c'],
+  ['#ffe0ec', '#a81f58'],
+  ['#fff0c7', '#7a5600'],
+  ['#d7eefb', '#125f8c'],
+  ['#d6f3ee', '#0f6b5e'],
+  ['#ebe4d8', '#5f4c2c'],
 ];
 
 export function Avatar({ name, avatarKey, size = 44 }: { name: string; avatarKey?: string | null; size?: number }) {
   const match = avatarKey?.match(/^sticker:(\d+)$/);
   let index = match ? Number(match[1]) - 1 : -1;
-  if (index < 0 || index >= STICKERS.length) {
-    index = Array.from(name).reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % STICKERS.length;
+  if (index < 0 || index >= AVATAR_COLORS.length) {
+    index = Array.from(name).reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_COLORS.length;
   }
-  const [bg, fg] = STICKERS[index];
+  const [bg, fg] = AVATAR_COLORS[index];
   return (
     <span
       className="avatar"
-      style={{ width: size, height: size, background: bg, color: fg, fontSize: size * 0.42 }}
+      style={{ width: size, height: size, background: bg, color: fg, fontSize: Math.round(size * 0.4) }}
       aria-hidden
     >
       {Array.from(name)[0]?.toUpperCase() ?? '?'}
@@ -194,52 +196,23 @@ export function Avatar({ name, avatarKey, size = 44 }: { name: string; avatarKey
   );
 }
 
-/* ---------- Обложка: своё изображение источника или нарисованный постер ---------- */
+/* ---------- Обложка: фото источника или спокойная заглушка со значком категории ---------- */
 
-const POSTER_COLORS: Record<string, [string, string, string]> = {
-  'Концерт': ['#6B3DF5', '#FF4D8D', '#C6F135'],
-  'Театр': ['#FF5A36', '#1B1240', '#FFC83D'],
-  'Выставка': ['#00B8A9', '#FFC83D', '#1B1240'],
-  'Спорт': ['#C6F135', '#1B1240', '#FF5A36'],
-  'Лекция': ['#FFC83D', '#6B3DF5', '#FFF4E0'],
-  'Фестиваль': ['#FF4D8D', '#FFC83D', '#6B3DF5'],
-  'Кино': ['#1B1240', '#FF5A36', '#C6F135'],
-  'Мастер-класс': ['#B69CFF', '#FF5A36', '#1B1240'],
-  'Вечеринка': ['#FF4D8D', '#1B1240', '#C6F135'],
-  'Стендап': ['#FFC83D', '#FF5A36', '#1B1240'],
-  'Прогулка': ['#00B8A9', '#C6F135', '#1B1240'],
-  'Детям': ['#C6F135', '#FF4D8D', '#6B3DF5'],
+const COVER_STYLES: Record<string, { bg: string; fg: string; icon: LucideIcon }> = {
+  'Концерт': { bg: '#e4dffe', fg: '#3f25c4', icon: Music },
+  'Театр': { bg: '#ffe2da', fg: '#a8320f', icon: Theater },
+  'Выставка': { bg: '#d6f3ee', fg: '#0f6b5e', icon: Palette },
+  'Спорт': { bg: '#dff3d8', fg: '#2c6b1c', icon: Dumbbell },
+  'Лекция': { bg: '#fff0c7', fg: '#7a5600', icon: BookOpen },
+  'Фестиваль': { bg: '#ffe0ec', fg: '#a81f58', icon: PartyPopper },
+  'Кино': { bg: '#d7eefb', fg: '#125f8c', icon: Film },
+  'Мастер-класс': { bg: '#ebe4d8', fg: '#5f4c2c', icon: Brush },
+  'Вечеринка': { bg: '#f3dcfb', fg: '#7a1f9c', icon: Sparkles },
+  'Стендап': { bg: '#ffe9d1', fg: '#94500a', icon: Mic },
+  'Прогулка': { bg: '#dcf2e4', fg: '#1a6b3c', icon: Footprints },
+  'Детям': { bg: '#fdf0d0', fg: '#86600a', icon: Baby },
 };
-const DEFAULT_POSTER: [string, string, string] = ['#6B3DF5', '#FF5A36', '#C6F135'];
-
-function Poster({ seed, category }: { seed: number; category?: string }) {
-  const [bg, a, b] = (category && POSTER_COLORS[category]) || DEFAULT_POSTER;
-  const variant = seed % 4;
-  const x = 40 + (seed * 37) % 240;
-  const y = 30 + (seed * 53) % 140;
-  return (
-    <svg className="poster" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice" aria-hidden>
-      <rect width="320" height="240" fill={bg} />
-      {variant === 0 && (<>
-        <circle cx={x} cy={y} r="96" fill={a} />
-        <circle cx={320 - x} cy={240 - y} r="56" fill={b} />
-      </>)}
-      {variant === 1 && (<>
-        <rect x={x - 90} y="-30" width="90" height="320" fill={a} transform={`rotate(18 ${x} 120)`} />
-        <circle cx={320 - x / 2} cy={y} r="48" fill={b} />
-      </>)}
-      {variant === 2 && (<>
-        <path d={`M0 ${y + 60} Q 160 ${y - 80} 320 ${y + 40} V240 H0 Z`} fill={a} />
-        <circle cx={x} cy={y - 10} r="34" fill={b} />
-      </>)}
-      {variant === 3 && (<>
-        {[0, 1, 2, 3].map((i) => (
-          <circle key={i} cx={x} cy={y} r={120 - i * 28} fill="none" stroke={i % 2 ? b : a} strokeWidth="12" />
-        ))}
-      </>)}
-    </svg>
-  );
-}
+const COVER_DEFAULT = { bg: '#ece9f8', fg: '#4326d1', icon: ImageIcon };
 
 export function Cover({ event, className }: {
   event: Pick<EventSummary, 'eventId' | 'coverUrl' | 'categories' | 'title'>;
@@ -247,39 +220,33 @@ export function Cover({ event, className }: {
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [event.coverUrl]);
+  const style = COVER_STYLES[event.categories[0]] ?? COVER_DEFAULT;
+  const Icon = style.icon;
   return (
-    <div className={`cover ${className ?? ''}`}>
+    <div className={`cover ${className ?? ''}`} style={{ background: style.bg, color: style.fg }}>
       {event.coverUrl && !failed ? (
         <img src={event.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       ) : (
-        <Poster seed={event.eventId} category={event.categories[0]} />
+        <Icon aria-hidden />
       )}
     </div>
   );
 }
 
-/* ---------- Строка события ---------- */
+/* ---------- Событие ---------- */
 
 export function EventTags({ event, limit = 2 }: { event: EventSummary; limit?: number }) {
   return (
     <div className="chips">
       {event.categories.slice(0, limit).map((c) => <Chip key={c}>{c}</Chip>)}
-      {event.ageLimit != null && event.ageLimit > 0 && <Chip tone="coral">{event.ageLimit}+</Chip>}
-      {event.isFree && <Chip tone="lime">Бесплатно</Chip>}
+      {event.ageLimit != null && event.ageLimit > 0 && <Chip>{event.ageLimit}+</Chip>}
     </div>
   );
 }
 
-export function EventMeta({ event }: { event: EventSummary }) {
-  return (
-    <ul className="meta">
-      <li><Calendar aria-hidden />{eventDate(event.startsAt, event.endsAt)}</li>
-      <li><MapPin aria-hidden />{place(event)}</li>
-    </ul>
-  );
-}
-
+/** Плоская строка списка из макета: обложка 72×88, четыре строки текста, шеврон и разделитель. */
 export function EventRow({ event, footer, compact }: { event: EventSummary; footer?: ReactNode; compact?: boolean }) {
+  const age = event.ageLimit != null && event.ageLimit > 0 ? ` · ${event.ageLimit}+` : '';
   return (
     <article className={`event-row ${compact ? 'event-row-compact' : ''}`}>
       <Link to={`/events/${event.eventId}`} className="event-row-link">
@@ -288,12 +255,7 @@ export function EventRow({ event, footer, compact }: { event: EventSummary; foot
           <h3>{event.title}</h3>
           <p>{eventDate(event.startsAt)}</p>
           <p className="muted">{place(event)}</p>
-          {!compact && (
-            <p className="event-row-price">
-              {price(event)}
-              {event.ageLimit != null && event.ageLimit > 0 ? ` · ${event.ageLimit}+` : ''}
-            </p>
-          )}
+          {!compact && <p className="event-row-price">{price(event)}{age}</p>}
         </div>
         <ChevronRight className="row-arrow" aria-hidden />
       </Link>
@@ -302,22 +264,15 @@ export function EventRow({ event, footer, compact }: { event: EventSummary; foot
   );
 }
 
-export function GoingLine({ count }: { count: number }) {
-  return (
-    <span className="going-line">
-      <Users aria-hidden />
-      {count} {plural(count, 'человек идёт', 'человека идут', 'человек идут')}
-    </span>
-  );
-}
+/* ---------- Лист или отдельный экран ---------- */
 
-/* ---------- Модальное окно ---------- */
-
-export function Sheet({ open, onClose, title, children }: {
+export function Sheet({ open, onClose, title, children, page }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** На телефоне занимает весь экран с шапкой «назад», как отдельная страница макета. */
+  page?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -339,31 +294,35 @@ export function Sheet({ open, onClose, title, children }: {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="sheet-backdrop"
+          className={`sheet-backdrop ${page ? 'sheet-backdrop-page' : ''}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
           onClick={onClose}
         >
-          <motion.div
+          <div
             ref={panel}
-            className="sheet"
+            className={`sheet ${page ? 'sheet-page' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-label={title}
             tabIndex={-1}
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sheet-head">
-              <h2>{title}</h2>
-              <button type="button" className="icon-btn" aria-label="Закрыть" onClick={onClose}><X aria-hidden /></button>
-            </div>
+            {page ? (
+              <div className="sheet-head sheet-head-page">
+                <button type="button" className="back-btn" aria-label="Закрыть" onClick={onClose}><ArrowLeft aria-hidden /></button>
+                <h1>{title}</h1>
+              </div>
+            ) : (
+              <div className="sheet-head">
+                <h2>{title}</h2>
+                <button type="button" className="back-btn" aria-label="Закрыть" onClick={onClose}><X aria-hidden /></button>
+              </div>
+            )}
             <div className="sheet-body">{children}</div>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

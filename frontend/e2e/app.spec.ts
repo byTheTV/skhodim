@@ -56,7 +56,7 @@ test('гость видит афишу, а для действий его про
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await expect(page.getByTestId('swipe-card').getByRole('heading')).toContainText('[ТЕСТ]');
-  await page.getByRole('button', { name: 'Сходим' }).click();
+  await page.getByRole('button', { name: 'Лайк' }).click();
   await expect(page).toHaveURL(/\/login\?next=/);
 
   await page.goto('/list');
@@ -109,12 +109,12 @@ test('свайп: лайк, пропуск, возврат карточки, ж�
   const deck = page.locator('.deck');
   const first = await deck.getAttribute('data-current');
 
-  await page.getByRole('button', { name: 'Сходим' }).click();
+  await page.getByRole('button', { name: 'Лайк' }).click();
   await expect(page.getByText('Добавлено в список')).toBeVisible();
   await expect(deck).not.toHaveAttribute('data-current', first!);
   const second = await deck.getAttribute('data-current');
 
-  await page.getByRole('button', { name: 'Мимо' }).click();
+  await page.getByRole('button', { name: 'Пропуск' }).click();
   await expect(deck).not.toHaveAttribute('data-current', second!);
   await page.getByRole('button', { name: 'Вернуть предыдущую карточку' }).click();
   await expect(deck).toHaveAttribute('data-current', second!);
@@ -319,7 +319,7 @@ test('тема: выбор сохраняется после перезагру�
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe('rgb(18, 12, 43)');
+  expect(bg).toBe('rgb(21, 20, 28)');
   await page.getByLabel('Тема оформления').selectOption('auto');
   await page.context().close();
 });

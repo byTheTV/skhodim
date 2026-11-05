@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowRight, Check, ExternalLink, Heart, Map as MapIcon, MessageCircle, Send, Share2, Star, Trash2, Users,
-} from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Share2, Star, Users } from 'lucide-react';
 import { api, type EventSummary, type Feedback } from '../api';
 import { useAuth } from '../auth';
-import { eventDate, plural, price, relativeTime } from '../format';
+import { eventDate, metroLabel, plural, price, relativeTime } from '../format';
 import { PageHeader } from '../layout';
 import {
-  Avatar, Button, Cover, EmptyState, ErrorBlock, EventMeta, EventTags, ReportButton, Sheet, Skeleton, Toggle, useToast,
+  Avatar, Button, Cover, EmptyState, ErrorBlock, EventTags, ReportButton, Sheet, Skeleton, Toggle, useToast,
 } from '../ui';
 
+/** Серая карточка контекста из макета: обложка 44×48 и три строки. */
 export function EventMini({ event }: { event: Pick<EventSummary, 'eventId' | 'title' | 'coverUrl' | 'categories' | 'startsAt' | 'placeName'> }) {
   return (
     <Link to={`/events/${event.eventId}`} className="event-mini">
@@ -25,7 +24,7 @@ export function EventMini({ event }: { event: Pick<EventSummary, 'eventId' | 'ti
   );
 }
 
-function ShareSheet({ eventId, title, open, onClose }: { eventId: number; title: string; open: boolean; onClose: () => void }) {
+export function ShareSheet({ eventId, title, open, onClose }: { eventId: number; title: string; open: boolean; onClose: () => void }) {
   const toast = useToast();
   const card = useQuery({
     queryKey: ['share-card', eventId],
@@ -71,7 +70,15 @@ function ShareSheet({ eventId, title, open, onClose }: { eventId: number; title:
   );
 }
 
-function CommentItem({ item, eventId }: { item: Feedback; eventId: number }) {
+function Stars({ rating }: { rating: number }) {
+  return (
+    <div className="stars" aria-label={`Оценка ${rating} из 5`}>
+      {[1, 2, 3, 4, 5].map((n) => <Star key={n} className={n <= rating ? 'star-on' : ''} aria-hidden />)}
+    </div>
+  );
+}
+
+function CommentItem({ item, eventId, onReply }: { item: Feedback; eventId: number; onReply?: (name: string) => void }) {
   const { me } = useAuth();
   const client = useQueryClient();
   const toast = useToast();
@@ -88,27 +95,21 @@ function CommentItem({ item, eventId }: { item: Feedback; eventId: number }) {
   return (
     <div className="comment">
       <Link to={`/users/${item.authorId}`} aria-label={`Профиль: ${item.displayName}`}>
-        <Avatar name={item.displayName} avatarKey={item.avatarKey} size={40} />
+        <Avatar name={item.displayName} avatarKey={item.avatarKey} size={36} />
       </Link>
       <div className="comment-body">
         <div className="comment-head">
           <Link to={`/users/${item.authorId}`}><b>{item.displayName}</b></Link>
           <span className="muted">{relativeTime(item.createdAt)}</span>
         </div>
-        {item.rating != null && (
-          <div className="stars" aria-label={`Оценка ${item.rating} из 5`}>
-            {[1, 2, 3, 4, 5].map((n) => <Star key={n} className={n <= item.rating! ? 'star-on' : ''} aria-hidden />)}
-          </div>
-        )}
+        {item.rating != null && <Stars rating={item.rating} />}
         <p>{item.body}</p>
         <div className="comment-actions">
-          {mine ? (
-            <button type="button" className="link-btn" onClick={() => remove.mutate()}>
-              <Trash2 aria-hidden /> Удалить
-            </button>
-          ) : me ? (
-            <ReportButton targetType="feedback" targetId={item.id} />
-          ) : null}
+          {onReply && !mine && me && (
+            <button type="button" className="link-btn" onClick={() => onReply(item.displayName)}>Ответить</button>
+          )}
+          {mine && <button type="button" className="link-btn" onClick={() => remove.mutate()}>Удалить</button>}
+          {!mine && me && <ReportButton targetType="feedback" targetId={item.id} />}
         </div>
       </div>
     </div>
@@ -141,14 +142,7 @@ function ReviewForm({ eventId, sessionId }: { eventId: number; sessionId: number
       <h3>Как всё прошло?</h3>
       <div className="stars stars-input" role="radiogroup" aria-label="Оценка">
         {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            role="radio"
-            aria-checked={rating === n}
-            aria-label={`${n} из 5`}
-            onClick={() => setRating(n)}
-          >
+          <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} из 5`} onClick={() => setRating(n)}>
             <Star className={n <= rating ? 'star-on' : ''} aria-hidden />
           </button>
         ))}
@@ -227,10 +221,11 @@ export function EventPage() {
   const session = sessionChoice ?? state.goingSessionId ?? upcoming[0]?.id ?? null;
   const shownSession = upcoming.find((s) => s.id === session);
   const others = Math.max(0, event.goingCount - (isGoing ? 1 : 0));
-  const longText = (event.description?.length ?? 0) > 280;
+  const longText = (event.description?.length ?? 0) > 220;
   const mapUrl = event.latitude != null && event.longitude != null
     ? `https://yandex.ru/maps/?pt=${event.longitude},${event.latitude}&z=16&l=map`
     : null;
+  const lastComment = comments.data?.[comments.data.length - 1];
 
   return (
     <div className="page page-event">
@@ -238,28 +233,39 @@ export function EventPage() {
         title="Событие"
         back
         actions={(
-          <button
-            type="button"
-            className={`icon-btn ${liked ? 'icon-btn-liked' : ''}`}
-            aria-label={liked ? 'Убрать из понравившегося' : 'Добавить в понравившееся'}
-            aria-pressed={liked}
-            onClick={() => { if (!requireSignIn()) like.mutate(liked); }}
-          >
-            <Heart aria-hidden />
-          </button>
+          <>
+            {isGoing && (
+              <button type="button" className="icon-btn" aria-label="Карточка для сторис" title="Карточка для сторис" onClick={() => setShareOpen(true)}>
+                <Share2 aria-hidden />
+              </button>
+            )}
+            <button
+              type="button"
+              className={`icon-btn ${liked ? 'icon-btn-liked' : ''}`}
+              aria-label={liked ? 'Убрать из понравившегося' : 'Добавить в понравившееся'}
+              aria-pressed={liked}
+              onClick={() => { if (!requireSignIn()) like.mutate(liked); }}
+            >
+              <Heart aria-hidden />
+            </button>
+          </>
         )}
       />
       <div className="event-layout">
         <div className="event-main">
           <Cover event={event} className="event-cover" />
           <h2 className="event-title">{event.title}</h2>
-          <EventMeta event={{ ...event, startsAt: shownSession?.startsAt ?? event.startsAt, endsAt: shownSession?.endsAt ?? event.endsAt }} />
-          {event.address && (
-            <p className="muted event-address">
-              {event.address}
-              {mapUrl && <> · <a href={mapUrl} target="_blank" rel="noreferrer"><MapIcon aria-hidden /> На карте</a></>}
-            </p>
-          )}
+          <div className="meta">
+            <p className="line-strong">{eventDate(shownSession?.startsAt ?? event.startsAt, shownSession?.endsAt ?? event.endsAt)}</p>
+            <p className="line">{[event.placeName, event.address].filter(Boolean).join(' · ') || 'Место уточняется'}</p>
+            {(event.metro || mapUrl) && (
+              <p className="line muted">
+                {metroLabel(event.metro)}
+                {event.metro && mapUrl && ' · '}
+                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer">На карте</a>}
+              </p>
+            )}
+          </div>
           <EventTags event={event} limit={4} />
           {tags.length > 0 && <p className="tags-line">{tags.map((t) => `#${t.name}`).join(' ')}</p>}
           {event.description && (
@@ -278,7 +284,7 @@ export function EventPage() {
           <div className="buy-card">
             <div>
               <b className="buy-price">{price(event)}</b>
-              {!event.isFree && <small className="muted">за билет, на сайте источника</small>}
+              {!event.isFree && <small>за билет</small>}
             </div>
             <a className="btn btn-secondary" href={event.ticketUrl ?? sourceUrl} target="_blank" rel="noreferrer">
               <ExternalLink aria-hidden /> Билеты
@@ -288,11 +294,7 @@ export function EventPage() {
           {upcoming.length > 1 && (
             <label className="field">
               <span>Сеанс</span>
-              <select
-                value={session ?? ''}
-                disabled={isGoing}
-                onChange={(e) => setSessionChoice(Number(e.target.value))}
-              >
+              <select value={session ?? ''} disabled={isGoing} onChange={(e) => setSessionChoice(Number(e.target.value))}>
                 {upcoming.map((s) => <option key={s.id} value={s.id}>{eventDate(s.startsAt)}</option>)}
               </select>
             </label>
@@ -302,13 +304,7 @@ export function EventPage() {
             <div className={`going-card ${isGoing ? 'going-card-on' : ''}`}>
               <div>
                 <b>{isGoing ? 'Вы идёте' : 'Хочу пойти'}</b>
-                <small>
-                  {isGoing
-                    ? (others > 0
-                      ? `Ещё ${others} ${plural(others, 'человек хочет', 'человека хотят', 'человек хотят')} пойти`
-                      : 'Других желающих пока нет')
-                    : 'Отметка откроет список тех, кто тоже идёт'}
-                </small>
+                {isGoing && <small>«Хочу пойти» включено</small>}
               </div>
               <Toggle
                 label="Хочу пойти"
@@ -322,40 +318,47 @@ export function EventPage() {
           )}
 
           {isGoing && (
-            <div className="event-buttons">
-              <Link to={`/events/${id}/going`} className="btn btn-primary btn-block">
-                <Users aria-hidden /> Желающие · {others}
-              </Link>
-              <Button block onClick={() => setShareOpen(true)}><Share2 aria-hidden /> Карточка для сторис</Button>
-            </div>
+            <Link to={`/events/${id}/going`} className="btn btn-secondary btn-block btn-compact">
+              <Users aria-hidden /> Желающие · {others}
+            </Link>
           )}
 
           {state.reviewSessionId != null && !state.hasReview && (
             <ReviewForm eventId={id} sessionId={state.reviewSessionId} />
           )}
-
-          {signedIn && <ReportButton targetType="event" targetId={id} label="Пожаловаться на событие" />}
         </div>
       </div>
 
+      <hr className="divider" />
+
       {reviews.data && reviews.data.length > 0 && (
         <section className="event-section">
-          <h2 className="section-title">Отзывы · {reviews.data.length}</h2>
+          <h2>Отзывы · {reviews.data.length}</h2>
           {reviews.data.map((r) => <CommentItem key={r.id} item={r} eventId={id} />)}
         </section>
       )}
 
       <section className="event-section">
         <div className="section-head">
-          <h2 className="section-title">Комментарии · {comments.data?.length ?? 0}</h2>
+          <h2>Комментарии · {comments.data?.length ?? 0}</h2>
           <Link to={`/events/${id}/comments`} className="link-btn link-strong">
             Все комментарии <ArrowRight aria-hidden />
           </Link>
         </div>
-        {comments.data?.slice(-2).map((c) => <CommentItem key={c.id} item={c} eventId={id} />)}
-        {comments.data?.length === 0 && <p className="hint">Пока никто не писал. Начните обсуждение первым.</p>}
+        {lastComment ? (
+          <div className="comment comment-compact">
+            <Avatar name={lastComment.displayName} avatarKey={lastComment.avatarKey} size={28} />
+            <div className="comment-body">
+              <b>{lastComment.displayName} · {relativeTime(lastComment.createdAt)}</b>
+              <p>{lastComment.body}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="hint">Пока никто не писал. Начните обсуждение первым.</p>
+        )}
       </section>
 
+      {signedIn && <ReportButton targetType="event" targetId={id} label="Пожаловаться на событие" />}
       {signedIn && <ShareSheet eventId={id} title={event.title} open={shareOpen} onClose={() => setShareOpen(false)} />}
     </div>
   );
@@ -367,6 +370,7 @@ export function Comments() {
   const client = useQueryClient();
   const toast = useToast();
   const [text, setText] = useState('');
+  const input = useRef<HTMLInputElement>(null);
   const details = useQuery({ queryKey: ['event', id], queryFn: () => api.event(id) });
   const comments = useQuery({ queryKey: ['comments', id], queryFn: () => api.comments(id) });
   const send = useMutation({
@@ -378,14 +382,20 @@ export function Comments() {
     },
     onError: (e: Error) => toast(e.message, 'error'),
   });
+  const reply = (name: string) => {
+    setText(`${name}, `);
+    input.current?.focus();
+  };
   return (
-    <div className="page page-with-composer">
+    <div className="page">
       <PageHeader title="Комментарии" back />
       {details.data && <EventMini event={details.data.summary} />}
       <h2 className="section-title">Обсуждение · {comments.data?.length ?? 0}</h2>
       {comments.isLoading && <Skeleton />}
       {comments.isError && <ErrorBlock error={comments.error} retry={() => comments.refetch()} />}
-      {comments.data?.map((c) => <CommentItem key={c.id} item={c} eventId={id} />)}
+      {comments.data && comments.data.length > 0 && (
+        <div>{comments.data.map((c) => <CommentItem key={c.id} item={c} eventId={id} onReply={reply} />)}</div>
+      )}
       {comments.data?.length === 0 && (
         <EmptyState icon={<MessageCircle />} title="Здесь пока тихо" text="Спросите, кто идёт, или посоветуйте, где встретиться." />
       )}
@@ -398,15 +408,14 @@ export function Comments() {
           }}
         >
           <input
+            ref={input}
             placeholder="Ваш комментарий..."
             aria-label="Ваш комментарий"
             maxLength={2000}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <button type="submit" className="icon-btn icon-btn-send" aria-label="Отправить" disabled={!text.trim() || send.isPending}>
-            <Send aria-hidden />
-          </button>
+          <button type="submit" aria-label="Отправить" disabled={!text.trim() || send.isPending}><Send aria-hidden /></button>
         </form>
       ) : (
         <Link to={`/login?next=/events/${id}/comments`} className="btn btn-primary btn-block">Войти, чтобы написать</Link>
@@ -430,54 +439,55 @@ export function Going() {
   const people = useQuery({ queryKey: ['going', id], queryFn: () => api.goingPeople(id) });
   const isGoing = details.data?.state.goingSessionId != null;
   const list = people.data ?? [];
+  const event = details.data?.summary;
   return (
     <div className="page">
       <PageHeader title={`Желающие · ${list.length}`} back />
-      {details.data && <EventMini event={details.data.summary} />}
+      {event && <EventMini event={event} />}
       {details.data && !isGoing && (
         <EmptyState
           icon={<Users />}
           title="Сначала отметьте «Хочу пойти»"
           text="Список желающих виден только тем, кто сам идёт на это событие."
-          action={<Link to={`/events/${id}`} className="btn btn-primary">Вернуться к событию</Link>}
+          action={<Link to={`/events/${id}`} className="btn btn-primary btn-block">Вернуться к событию</Link>}
         />
       )}
       {people.isLoading && <Skeleton />}
       {people.isError && <ErrorBlock error={people.error} retry={() => people.refetch()} />}
       {isGoing && people.data && list.length === 0 && (
-        <EmptyState
-          icon={<Users />}
-          title="Вы пока первый"
-          text="На это событие, кроме вас, никто не собирается. Загляните позже: компания может появиться."
-          action={(
-            <>
-              <Link to={`/events/${id}`} className="btn btn-primary btn-block">Вернуться к событию</Link>
-              <Link to="/" className="btn btn-secondary btn-block">Найти другое событие</Link>
-            </>
-          )}
-        />
+        <>
+          <div className="note">
+            <b><Check aria-hidden style={{ width: 16, height: 16, verticalAlign: -3, marginRight: 6 }} />Вы идёте</b>
+            <p>«Хочу пойти» включено. Других людей: 0.</p>
+          </div>
+          <EmptyState
+            icon={<Users />}
+            title="Вы пока первый"
+            text="На это событие, кроме вас, никто не собирается. Загляните позже: компания может появиться."
+            action={(
+              <>
+                <Link to={`/events/${id}`} className="btn btn-primary btn-block">Вернуться к событию</Link>
+                <Link to="/" className="btn btn-secondary btn-block">Найти другое событие</Link>
+              </>
+            )}
+          />
+        </>
       )}
       {isGoing && list.length > 0 && (
         <>
           <p className="hint">Вы идёте. Ещё {list.length} {plural(list.length, 'человек хочет', 'человека хотят', 'человек хотят')} пойти:</p>
           <div className="people">
             {list.map((p) => (
-              <Link
-                key={p.userId}
-                to={`/users/${p.userId}?event=${id}&session=${p.sessionId}`}
-                className="person-row"
-              >
-                <Avatar name={p.displayName} avatarKey={p.avatarKey} size={48} />
+              <Link key={p.userId} to={`/users/${p.userId}?event=${id}&session=${p.sessionId}`} className="person-row">
+                <Avatar name={p.displayName} avatarKey={p.avatarKey} size={38} />
                 <div>
                   <b>@{p.nickname}</b>
                   <p className="muted">{p.interests.slice(0, 3).join(' · ')}</p>
                   {p.recentLike && <p className="muted small">Недавний лайк: {p.recentLike}</p>}
-                  {p.requestStatus && (
-                    <p className="status-line"><Check aria-hidden /> {requestLabel(p.requestStatus, p.requestOutgoing)}</p>
-                  )}
+                  {p.requestStatus && <p className="status-line"><Check aria-hidden /> {requestLabel(p.requestStatus, p.requestOutgoing)}</p>}
                   {!p.sameSession && <p className="muted small">Идёт на другой сеанс</p>}
                 </div>
-                <ArrowRight className="row-arrow" aria-hidden />
+                <ChevronRight className="row-arrow" aria-hidden />
               </Link>
             ))}
           </div>

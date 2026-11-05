@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Clock, Lock, MessageCircle, Sparkles, X } from 'lucide-react';
+import { Check, Clock3, LockKeyhole, Mail, MessageCircle, X } from 'lucide-react';
 import { api, type RequestView } from '../api';
 import { relativeTime, shortDate } from '../format';
 import { PageHeader } from '../layout';
@@ -35,12 +35,9 @@ function InviteCard({ item }: { item: RequestView }) {
   return (
     <article className="invite-card">
       <Link to={`/invites/${item.requestId}`} className="invite-card-link">
-        <Avatar name={item.peerDisplayName} avatarKey={item.peerAvatarKey} size={44} />
-        <div>
-          <b>{item.outgoing ? `Вы пригласили: ${item.peerDisplayName}` : `${item.peerDisplayName} приглашает вас`}</b>
-          <p>{item.eventTitle}</p>
-          <p className="muted">{shortDate(item.startsAt)}</p>
-        </div>
+        <b>{item.outgoing ? `Вы пригласили: ${item.peerDisplayName}` : `${item.peerDisplayName} приглашает вас`}</b>
+        <span>{item.eventTitle}</span>
+        <span className="muted">{shortDate(item.startsAt)}</span>
       </Link>
       {!item.outgoing && item.status === 'PENDING' && (
         <div className="invite-actions">
@@ -48,10 +45,17 @@ function InviteCard({ item }: { item: RequestView }) {
           <Button block onClick={() => resolve.mutate({ id: item.requestId, accept: false })}>Отклонить</Button>
         </div>
       )}
-      {item.outgoing && item.status === 'PENDING' && <p className="status-line"><Clock aria-hidden /> Ждём ответа</p>}
+      {item.outgoing && item.status === 'PENDING' && <p className="status-line"><Clock3 aria-hidden /> Ждём ответа</p>}
     </article>
   );
 }
+
+const STATUS_TITLE: Record<RequestView['status'], string> = {
+  PENDING: 'Ждём',
+  ACCEPTED: 'Принято',
+  REJECTED: 'Отклонено',
+  CANCELLED: 'Отменено',
+};
 
 export function Invites() {
   const [tab, setTab] = useState<'incoming' | 'outgoing'>('incoming');
@@ -64,11 +68,8 @@ export function Invites() {
   const history = (tab === 'incoming' ? incoming : outgoing).filter((r) => r.status !== 'PENDING');
   return (
     <div className="page">
-      <PageHeader
-        title="Приглашения"
-        back
-        sub="Примите или отклоните входящие. После принятия откроется чат."
-      />
+      <PageHeader title="Приглашения" back />
+      <p className="page-sub">Входящие: примите или отклоните. Исходящие: дождитесь ответа. Отсюда же открывается чат после принятия.</p>
       <Tabs
         value={tab}
         onChange={setTab}
@@ -81,10 +82,10 @@ export function Invites() {
       {requests.isError && <ErrorBlock error={requests.error} retry={() => requests.refetch()} />}
       {requests.data && shown.length === 0 && (
         <EmptyState
-          icon={<Sparkles />}
+          icon={<Mail />}
           title={tab === 'incoming' ? 'Новых приглашений нет' : 'Ответов никто не ждёт'}
           text="Отметьте «Хочу пойти» на событии и пригласите кого-нибудь из желающих."
-          action={<Link to="/list" className="btn btn-primary">Открыть мой список</Link>}
+          action={<Link to="/list" className="btn btn-primary btn-block">Открыть мой список</Link>}
         />
       )}
       <div className="invite-grid">{shown.map((r) => <InviteCard key={r.requestId} item={r} />)}</div>
@@ -94,7 +95,7 @@ export function Invites() {
           <div className="people">
             {history.map((r) => (
               <Link key={r.requestId} to={`/invites/${r.requestId}`} className="person-row">
-                <Avatar name={r.peerDisplayName} avatarKey={r.peerAvatarKey} size={40} />
+                <Avatar name={r.peerDisplayName} avatarKey={r.peerAvatarKey} size={38} />
                 <div>
                   <b>{r.peerDisplayName}</b>
                   <p className="muted">{r.eventTitle}</p>
@@ -108,13 +109,6 @@ export function Invites() {
     </div>
   );
 }
-
-const STATUS_TITLE: Record<RequestView['status'], string> = {
-  PENDING: 'Ждём',
-  ACCEPTED: 'Принято',
-  REJECTED: 'Отклонено',
-  CANCELLED: 'Отменено',
-};
 
 export function InviteStatus() {
   const id = Number(useParams().id);
@@ -163,16 +157,16 @@ export function InviteStatus() {
           : 'Если вы примете приглашение, откроется чат на двоих.');
 
   return (
-    <div className="page page-narrow">
+    <div className="page">
       <PageHeader title="Приглашение" back />
       <div className={`status-hero status-hero-${r.status.toLowerCase()}`}>
         <span className="status-icon">
-          {accepted ? <Check aria-hidden /> : pending ? <Clock aria-hidden /> : <X aria-hidden />}
+          {accepted ? <Check aria-hidden /> : pending ? <Clock3 aria-hidden /> : <X aria-hidden />}
         </span>
         <h2>{heading}</h2>
         <p>{text}</p>
       </div>
-      <Link to={`/users/${r.peerId}`} className="person-row">
+      <Link to={`/users/${r.peerId}`} className="person-row person-plain">
         <Avatar name={name} avatarKey={r.peerAvatarKey} size={48} />
         <div>
           <b>{name} · @{r.peerNickname}</b>
@@ -181,7 +175,7 @@ export function InviteStatus() {
           </p>
         </div>
       </Link>
-      <h3 className="section-title">{accepted ? 'Вы идёте вместе на' : 'Пойти вместе на'}</h3>
+      <h2 className="section-title">{accepted ? 'Вы идёте вместе на' : 'Пойти вместе на'}</h2>
       <EventMini
         event={{
           eventId: r.eventId,
@@ -192,10 +186,17 @@ export function InviteStatus() {
           placeName: r.placeName,
         }}
       />
-      {!accepted && pending && r.outgoing && (
-        <div className="note">
+
+      {pending && r.outgoing && (
+        <div className="note note-boxed">
           <b>Ожидает принятия</b>
           <p>Личные сообщения доступны только после взаимного согласия.</p>
+        </div>
+      )}
+      {accepted && (
+        <div className="note note-boxed">
+          <b>Приглашение принято, чат доступен</b>
+          <p>Начните с простого приветствия. Уточните время и удобное место встречи.</p>
         </div>
       )}
 
@@ -207,7 +208,7 @@ export function InviteStatus() {
         )}
         {pending && r.outgoing && (
           <>
-            <button type="button" className="btn btn-secondary btn-block" disabled><Lock aria-hidden /> Чат пока недоступен</button>
+            <button type="button" className="btn btn-secondary btn-block" disabled><LockKeyhole aria-hidden /> Чат пока недоступен</button>
             <Button block loading={cancel.isPending} onClick={() => cancel.mutate()}>Отозвать приглашение</Button>
           </>
         )}
@@ -217,7 +218,9 @@ export function InviteStatus() {
             <Button block onClick={() => resolve.mutate({ id, accept: false })}>Отклонить</Button>
           </>
         )}
-        <Link to={`/events/${r.eventId}/going`} className="btn btn-ghost btn-block">Вернуться к желающим</Link>
+        <Link to={accepted ? `/events/${r.eventId}` : `/events/${r.eventId}/going`} className="btn btn-secondary btn-block">
+          {accepted ? 'Вернуться к событию' : 'Вернуться к желающим'}
+        </Link>
       </div>
     </div>
   );

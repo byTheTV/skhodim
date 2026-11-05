@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarCheck, Check, Heart, Trash2, Users } from 'lucide-react';
-import { api } from '../api';
+import { CalendarCheck, Check, ChevronRight, Heart, Share2 } from 'lucide-react';
+import { api, type EventSummary } from '../api';
 import { plural } from '../format';
 import { PageHeader } from '../layout';
 import { EmptyState, ErrorBlock, EventRow, Skeleton, Tabs, useToast } from '../ui';
+import { ShareSheet } from './Event';
 
 type Tab = 'going' | 'liked' | 'visited';
 
 export function Lists() {
   const [tab, setTab] = useState<Tab>('going');
+  const [sharing, setSharing] = useState<EventSummary | null>(null);
   const client = useQueryClient();
   const toast = useToast();
   const lists = useQuery({ queryKey: ['lists'], queryFn: api.lists });
@@ -39,12 +41,14 @@ export function Lists() {
             icon={<CalendarCheck />}
             title="Планов пока нет"
             text="Откройте событие и включите «Хочу пойти»: так вы увидите, кто ещё собирается."
-            action={<Link to="/" className="btn btn-primary">К свайпу</Link>}
+            action={<Link to="/" className="btn btn-primary btn-block">К свайпу</Link>}
           />
         ) : (
           <>
-            <h2 className="section-title">Активные планы</h2>
-            <p className="hint">Здесь доступны желающие, приглашения и чаты по этим событиям.</p>
+            <div>
+              <h2 className="section-title">Активные планы</h2>
+              <p className="hint">События с включённым «Хочу пойти». Здесь доступны желающие, приглашения и чат по этим планам.</p>
+            </div>
             <div className="grid-events">
               {data.going.map((entry) => {
                 const others = Math.max(0, entry.event.goingCount - 1);
@@ -53,17 +57,33 @@ export function Lists() {
                     key={entry.event.eventId}
                     event={entry.event}
                     footer={(
-                      <Link to={`/events/${entry.event.eventId}/going`} className="footer-link">
-                        <Check aria-hidden />
-                        {others > 0
-                          ? `Вы идёте, ещё ${others} ${plural(others, 'человек', 'человека', 'человек')}`
-                          : 'Вы идёте, других желающих пока нет'}
-                        <Users aria-hidden />
-                      </Link>
+                      <>
+                        <Link to={`/events/${entry.event.eventId}/going`} className="footer-link">
+                          <Check aria-hidden />
+                          <span>
+                            {others > 0
+                              ? `Вы идёте · ещё ${others} ${plural(others, 'человек', 'человека', 'человек')}`
+                              : 'Вы идёте · других желающих пока нет'}
+                          </span>
+                          <ChevronRight className="footer-chevron" aria-hidden />
+                        </Link>
+                        <button
+                          type="button"
+                          className="footer-icon"
+                          aria-label={`Карточка для сторис: ${entry.event.title}`}
+                          onClick={() => setSharing(entry.event)}
+                        >
+                          <Share2 aria-hidden />
+                        </button>
+                      </>
                     )}
                   />
                 );
               })}
+            </div>
+            <div className="note">
+              <b>Как переключать</b>
+              <p>Вкладка «Хочу пойти» открывается первой. «Понравилось» содержит только лайки со свайпа, без планов похода.</p>
             </div>
           </>
         )
@@ -75,12 +95,14 @@ export function Lists() {
             icon={<Heart />}
             title="Лайков пока нет"
             text="Смахивайте события вправо, и они появятся здесь."
-            action={<Link to="/" className="btn btn-primary">К свайпу</Link>}
+            action={<Link to="/" className="btn btn-primary btn-block">К свайпу</Link>}
           />
         ) : (
           <>
-            <h2 className="section-title">Только лайки</h2>
-            <p className="hint">Понравилось на свайпе, но «Хочу пойти» ещё не нажато.</p>
+            <div>
+              <h2 className="section-title">Только лайки</h2>
+              <p className="hint">Лайкнули на свайпе, но «Хочу пойти» ещё не нажали. Включите в карточке события, и оно перейдёт в первый раздел.</p>
+            </div>
             <div className="grid-events">
               {data.liked.map((entry) => (
                 <EventRow
@@ -93,11 +115,15 @@ export function Lists() {
                       aria-label={`Убрать «${entry.event.title}» из понравившегося`}
                       onClick={() => remove.mutate(entry.event.eventId)}
                     >
-                      <Trash2 aria-hidden /> Убрать
+                      <Heart aria-hidden /> Убрать
                     </button>
                   )}
                 />
               ))}
+            </div>
+            <div className="note">
+              <b>Лайк и «Хочу пойти»</b>
+              <p>Обе категории находятся в разделе «Список». Лайк значит интерес, «Хочу пойти» значит готовность идти и искать компанию.</p>
             </div>
           </>
         )
@@ -105,18 +131,19 @@ export function Lists() {
 
       {data && tab === 'visited' && (
         <>
-          <h2 className="section-title">Уже прошли</h2>
-          <p className="hint">Откройте событие, чтобы оставить отзыв.</p>
+          <div>
+            <h2 className="section-title">Уже прошли</h2>
+            <p className="hint">Откройте событие, чтобы оставить отзыв.</p>
+          </div>
           <div className="grid-events">
             {data.visited.map((entry) => <EventRow key={entry.event.eventId} event={entry.event} />)}
           </div>
         </>
       )}
 
-      <div className="note note-explain">
-        <b>Лайк и «Хочу пойти»</b>
-        <p>Лайк значит интерес. «Хочу пойти» значит готовность идти и искать компанию.</p>
-      </div>
+      {sharing && (
+        <ShareSheet eventId={sharing.eventId} title={sharing.title} open onClose={() => setSharing(null)} />
+      )}
     </div>
   );
 }

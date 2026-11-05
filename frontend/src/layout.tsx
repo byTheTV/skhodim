@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Bell, ClipboardList, Layers, MessageCircle, Search, ShieldCheck, Sparkles, User, Users } from 'lucide-react';
+import { ArrowLeft, Bell, Layers, ListChecks, MessageCircle, Search, ShieldCheck, Mail, UserRound, Users } from 'lucide-react';
 import { api } from './api';
 import { useAuth } from './auth';
 import { Avatar, Badge } from './ui';
@@ -19,8 +19,8 @@ function useBadges() {
 const TABS = [
   { to: '/', label: 'Свайп', icon: Layers, end: true },
   { to: '/social', label: 'Соцсеть', icon: Users },
-  { to: '/list', label: 'Список', icon: ClipboardList },
-  { to: '/profile', label: 'Профиль', icon: User },
+  { to: '/list', label: 'Список', icon: ListChecks },
+  { to: '/profile', label: 'Профиль', icon: UserRound },
 ];
 
 export function Shell() {
@@ -39,13 +39,12 @@ export function Shell() {
     <div className={`shell ${isChat ? 'shell-chat' : ''}`}>
       <a className="skip-link" href="#main">К содержимому</a>
       <aside className="sidebar">
-        <Link to="/" className="logo" aria-label="Сходим, на главную">сходим<span>!</span></Link>
+        <Link to="/" className="brand">Сходим</Link>
         <nav className="side-nav" aria-label="Основная навигация">
           {TABS.map((tab) => (
             <NavLink key={tab.to} to={tab.to} end={tab.end} className="side-link">
               <tab.icon aria-hidden />
               <span>{tab.label}</span>
-              {tab.to === '/profile' && showBadges && <Badge count={inbox} />}
             </NavLink>
           ))}
           <div className="side-sep" />
@@ -53,7 +52,7 @@ export function Shell() {
           {signedIn && (
             <>
               <NavLink to="/invites" className="side-link">
-                <Sparkles aria-hidden /><span>Приглашения</span>
+                <Mail aria-hidden /><span>Приглашения</span>
                 {showBadges && <Badge count={badges?.pendingInvites ?? 0} />}
               </NavLink>
               <NavLink to="/chats" className="side-link">
@@ -70,47 +69,42 @@ export function Shell() {
             <NavLink to="/admin" className="side-link"><ShieldCheck aria-hidden /><span>Модерация</span></NavLink>
           )}
         </nav>
-        <div className="side-foot">
-          {signedIn && me ? (
-            <Link to="/profile" className="side-me">
-              <Avatar name={me.profile.displayName ?? me.profile.nickname} avatarKey={me.profile.avatarKey} size={40} />
-              <span>
-                <b>{me.profile.displayName ?? me.profile.nickname}</b>
-                <small>@{me.profile.nickname}</small>
-              </span>
-            </Link>
-          ) : !signedIn ? (
-            <Link to="/login" className="btn btn-primary btn-block">Войти</Link>
-          ) : null}
-        </div>
+        {signedIn && me ? (
+          <Link to="/profile" className="side-me">
+            <Avatar name={me.profile.displayName ?? me.profile.nickname} avatarKey={me.profile.avatarKey} size={36} />
+            <span>
+              <b>{me.profile.displayName ?? me.profile.nickname}</b>
+              <small>@{me.profile.nickname}</small>
+            </span>
+          </Link>
+        ) : !signedIn ? (
+          <Link to="/login" className="btn btn-primary btn-block">Войти</Link>
+        ) : null}
       </aside>
 
       <main id="main" className="main">
         <Outlet />
       </main>
 
-      {!isChat && (
-        <nav className="tabbar" aria-label="Основная навигация">
-          {TABS.map((tab) => (
-            <NavLink key={tab.to} to={tab.to} end={tab.end} className="tab">
-              <span className="tab-icon">
-                <tab.icon aria-hidden />
-                {tab.to === '/profile' && showBadges && <Badge count={inbox} />}
-              </span>
-              <span>{tab.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      )}
+      <nav className="tabbar" aria-label="Основная навигация">
+        {TABS.map((tab) => (
+          <NavLink key={tab.to} to={tab.to} end={tab.end} className="tab">
+            <span className="tab-icon">
+              <tab.icon aria-hidden />
+              {tab.to === '/profile' && showBadges && <Badge count={inbox} />}
+            </span>
+            <span>{tab.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
 
-export function PageHeader({ title, back, actions, sub }: {
+export function PageHeader({ title, back, actions }: {
   title: ReactNode;
   back?: boolean | string;
   actions?: ReactNode;
-  sub?: ReactNode;
 }) {
   const navigate = useNavigate();
   return (
@@ -118,7 +112,7 @@ export function PageHeader({ title, back, actions, sub }: {
       {back && (
         <button
           type="button"
-          className="icon-btn"
+          className="back-btn"
           aria-label="Назад"
           onClick={() => {
             if (typeof back === 'string') navigate(back);
@@ -131,7 +125,6 @@ export function PageHeader({ title, back, actions, sub }: {
       )}
       <div className="page-title">
         <h1>{title}</h1>
-        {sub && <p>{sub}</p>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>

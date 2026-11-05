@@ -45,11 +45,13 @@ export function Search() {
       </div>
 
       <div className="chips chips-row">
-        <Chip active={filters.when === 'any'} onClick={() => setOpen(true)}>{whenTitle(filters)}</Chip>
+        <Chip onClick={() => setOpen(true)}>{whenTitle(filters)}</Chip>
         <Chip active={filters.categoryIds.length > 0} onClick={() => setOpen(true)}>
           {filters.categoryIds.length ? `Категорий: ${filters.categoryIds.length}` : 'Все категории'}
         </Chip>
-        <Chip active={filters.isFree} onClick={() => setFilters({ ...filters, isFree: !filters.isFree })}>Бесплатно</Chip>
+        <Chip active={filters.isFree} onClick={() => setFilters({ ...filters, isFree: !filters.isFree })}>
+          {filters.isFree ? 'Бесплатно' : 'Любая цена'}
+        </Chip>
         {filters.metro && <Chip active onClick={() => setFilters({ ...filters, metro: null })}>м. {filters.metro} ✕</Chip>}
       </div>
 
@@ -58,15 +60,16 @@ export function Search() {
 
       {results.data && found > 0 && (
         <>
-          <h2 className="section-title">
-            {query
-              ? `Найдено ${found} ${plural(found, 'событие', 'события', 'событий')}`
-              : 'Вся афиша'}
-          </h2>
-          {query && <p className="hint">Санкт-Петербург, по запросу «{query}»</p>}
+          <div>
+            <h2 className="section-title">
+              {query ? `Найдено ${found} ${plural(found, 'событие', 'события', 'событий')}` : 'Вся афиша'}
+            </h2>
+            <p className="hint">{query ? `Санкт-Петербург · по запросу «${query}»` : 'Санкт-Петербург'}</p>
+          </div>
           <div className="grid-events">
             {results.data.map((e) => <EventRow key={e.eventId} event={e} />)}
           </div>
+          <p className="hint">Попробуйте название, место или интересующую тему.</p>
         </>
       )}
 
@@ -75,9 +78,9 @@ export function Search() {
           icon={<SearchX />}
           title="Пока ничего не нашлось"
           text={query || count
-            ? 'Попробуйте название, место или другую тему, либо смягчите фильтры.'
+            ? 'Попробуйте название, место или другую тему, либо уберите часть фильтров.'
             : 'Афиша пока пуста: события появятся после загрузки реальных данных.'}
-          action={count > 0 ? <Button variant="primary" onClick={() => setFilters(NO_FILTERS)}>Сбросить фильтры</Button> : undefined}
+          action={count > 0 ? <Button variant="primary" block onClick={() => setFilters(NO_FILTERS)}>Сбросить фильтры</Button> : undefined}
         />
       )}
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, UserRound } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { api } from '../api';
 import { nextPath, useAuth } from '../auth';
 import { Button, Chip, useToast } from '../ui';
@@ -14,18 +14,9 @@ function AuthLayout({ title, subtitle, children, footer }: {
 }) {
   return (
     <div className="auth">
-      <aside className="auth-art" aria-hidden>
-        <div className="auth-art-shapes">
-          <span className="shape shape-a" />
-          <span className="shape shape-b" />
-          <span className="shape shape-c" />
-        </div>
-        <p className="auth-art-title">Куда сходить в Петербурге и с кем</p>
-        <p className="auth-art-text">Смахивай афишу, отмечай, куда хочешь пойти, и находи компанию на тот же вечер.</p>
-      </aside>
       <main className="auth-main">
         <Link to="/" className="link-btn"><ArrowLeft aria-hidden /> К афише</Link>
-        <div className="logo logo-big">сходим<span>!</span></div>
+        <div className="auth-brand">Сходим</div>
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>
         {children}
@@ -62,7 +53,7 @@ export function Login() {
   };
   return (
     <AuthLayout
-      title="С возвращением"
+      title="Вход"
       subtitle="Войдите, чтобы лайкать события и искать компанию."
       footer={<>Ещё нет аккаунта? <Link to={`/register${location.search}`}>Зарегистрироваться</Link></>}
     >
@@ -82,9 +73,7 @@ export function Login() {
         <p className="muted small">Учебный проект: можно войти без регистрации</p>
         <div className="stack-row">
           {DEMO.map((d) => (
-            <Button key={d.email} onClick={() => login.mutate({ email: d.email, password: DEMO_PASSWORD })}>
-              <UserRound aria-hidden /> {d.label}
-            </Button>
+            <Button key={d.email} onClick={() => login.mutate({ email: d.email, password: DEMO_PASSWORD })}>{d.label}</Button>
           ))}
         </div>
       </div>
@@ -126,7 +115,7 @@ export function Register() {
   if (step === 1) {
     return (
       <AuthLayout
-        title="Создаём аккаунт"
+        title="Регистрация"
         subtitle="Шаг 1 из 2. Без анкеты: только то, что нужно для компании на вечер."
         footer={<>Уже есть аккаунт? <Link to={`/login${location.search}`}>Войти</Link></>}
       >

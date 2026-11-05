@@ -6,7 +6,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { clock, relativeTime } from '../format';
 import { PageHeader } from '../layout';
-import { Avatar, Badge, EmptyState, ErrorBlock, ReportButton, Skeleton, useToast } from '../ui';
+import { Avatar, Badge, EmptyState, ErrorBlock, Skeleton, useToast } from '../ui';
 import { EventMini } from './Event';
 
 function ChatList({ activeId }: { activeId?: number }) {
@@ -17,7 +17,8 @@ function ChatList({ activeId }: { activeId?: number }) {
 
   return (
     <div className="chat-list">
-      <PageHeader title="Чаты" back="/profile" sub="Переписки после принятых приглашений" />
+      <PageHeader title="Чаты" back="/profile" />
+      <p className="page-sub">Все переписки после принятых приглашений. Откройте диалог, чтобы продолжить обсуждение встречи.</p>
       {chats.isLoading && <Skeleton />}
       {chats.isError && <ErrorBlock error={chats.error} retry={() => chats.refetch()} />}
       {chats.data?.length === 0 && (
@@ -25,7 +26,7 @@ function ChatList({ activeId }: { activeId?: number }) {
           icon={<MessageCircle />}
           title="Чатов пока нет"
           text="Чат откроется, когда кто-то примет ваше приглашение пойти вместе."
-          action={<Link to="/invites" className="btn btn-primary">К приглашениям</Link>}
+          action={<Link to="/invites" className="btn btn-primary btn-block">К приглашениям</Link>}
         />
       )}
       {chats.data?.map((c) => (
@@ -40,22 +41,22 @@ function ChatList({ activeId }: { activeId?: number }) {
               <b>{c.peerDisplayName}</b>
               <span className="muted">{relativeTime(c.lastAt)}</span>
             </div>
-            <p className="muted small">{c.eventTitle}</p>
+            <p className="muted">{c.eventTitle}</p>
             <p className="chat-preview">
               {c.lastBody
                 ? `${c.lastAuthorId === me?.userId ? 'Вы: ' : ''}${c.lastBody}`
-                : 'Приглашение принято. Напишите первым.'}
+                : 'Приглашение принято. Напишите, во сколько встречаетесь.'}
             </p>
           </div>
           <Badge count={c.unreadCount} />
         </Link>
       ))}
       {waiting.length > 0 && (
-        <div className="note">
-          <b>Ожидают ответа</b>
+        <div className="note" style={{ marginTop: 8 }}>
+          <b>Ожидающие приглашения</b>
           {waiting.map((w) => (
             <p key={w.requestId}>
-              <Link to={`/invites/${w.requestId}`}>{w.peerDisplayName}</Link>: приглашение отправлено, ответа пока нет.
+              <Link to={`/invites/${w.requestId}`}>{w.peerDisplayName}</Link>: приглашение отправлено, ответа пока нет. Следите за статусом в разделе «Приглашения».
             </p>
           ))}
         </div>
@@ -108,7 +109,7 @@ function Conversation({ id }: { id: number }) {
         back="/chats"
         actions={c && (
           <Link to={`/users/${c.peerId}`} aria-label={`Профиль: ${c.peerDisplayName}`}>
-            <Avatar name={c.peerDisplayName} avatarKey={c.peerAvatarKey} size={40} />
+            <Avatar name={c.peerDisplayName} avatarKey={c.peerAvatarKey} size={34} />
           </Link>
         )}
       />
@@ -127,7 +128,7 @@ function Conversation({ id }: { id: number }) {
       <div className="messages" aria-live="polite">
         {messages.isLoading && <Skeleton />}
         {messages.isError && <ErrorBlock error={messages.error} />}
-        {messages.data?.length === 0 && <p className="hint hint-center">Приглашение принято. Напишите первым.</p>}
+        <p className="hint hint-center">{messages.data?.length === 0 ? 'Приглашение принято. Напишите первым.' : 'Приглашение принято'}</p>
         {messages.data?.map((m) => (
           <div key={m.id} className={`bubble ${m.authorId === me?.userId ? 'bubble-mine' : ''}`}>
             <p>{m.body}</p>
@@ -136,7 +137,6 @@ function Conversation({ id }: { id: number }) {
         ))}
         <div ref={bottom} />
       </div>
-      {c && <div className="chat-report"><ReportButton targetType="user" targetId={c.peerId} label="Пожаловаться на собеседника" /></div>}
       <form
         className="composer composer-chat"
         onSubmit={(e) => {
@@ -144,16 +144,8 @@ function Conversation({ id }: { id: number }) {
           if (text.trim() && !send.isPending) send.mutate(text.trim());
         }}
       >
-        <input
-          placeholder="Сообщение..."
-          aria-label="Сообщение"
-          maxLength={2000}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button type="submit" className="icon-btn icon-btn-send" aria-label="Отправить" disabled={!text.trim() || send.isPending}>
-          <Send aria-hidden />
-        </button>
+        <input placeholder="Сообщение..." aria-label="Сообщение" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+        <button type="submit" aria-label="Отправить" disabled={!text.trim() || send.isPending}><Send aria-hidden /></button>
       </form>
     </div>
   );
