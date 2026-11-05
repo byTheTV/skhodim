@@ -382,7 +382,7 @@ AS $$
         WHERE ui.user_id = u.id
     ) i ON true
     WHERE u.id <> p_user AND NOT u.is_banned AND u.role = 'USER'
-    ORDER BY COALESCE(sh.cnt, 0) DESC, taste_similarity(p_user, u.id) DESC, u.id
+    ORDER BY taste_similarity(p_user, u.id) DESC, COALESCE(sh.cnt, 0) DESC, u.id
     LIMIT p_limit;
 $$;
 

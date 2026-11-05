@@ -1,0 +1,161 @@
+import { useRef, useState, type ChangeEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, CloudDownload, ShieldCheck, Upload, XCircle } from 'lucide-react';
+import { api, type ImportResult, type ModerationItem } from '../api';
+import { relativeTime } from '../format';
+import { PageHeader } from '../layout';
+import { Button, EmptyState, ErrorBlock, Skeleton, Tabs, useToast } from '../ui';
+
+const TARGET_LABEL: Record<ModerationItem['targetType'], string> = {
+  event: 'Событие',
+  user: 'Пользователь',
+  feedback: 'Комментарий',
+};
+const TARGET_ACTION: Record<ModerationItem['targetType'], { action: string; label: string }> = {
+  event: { action: 'HIDE_EVENT', label: 'Скрыть событие' },
+  user: { action: 'BAN_USER', label: 'Заблокировать' },
+  feedback: { action: 'HIDE_FEEDBACK', label: 'Скрыть комментарий' },
+};
+
+function Moderation() {
+  const client = useQueryClient();
+  const toast = useToast();
+  const queue = useQuery({ queryKey: ['moderation'], queryFn: api.moderation });
+  const act = useMutation({
+    mutationFn: ({ id, action }: { id: number; action: string }) => api.moderate(id, action),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['moderation'] });
+      toast('Жалоба рассмотрена');
+    },
+    onError: (e: Error) => toast(e.message, 'error'),
+  });
+  if (queue.isLoading) return <Skeleton />;
+  if (queue.isError) return <ErrorBlock error={queue.error} retry={() => queue.refetch()} />;
+  if (!queue.data?.length) {
+    return <EmptyState icon={<ShieldCheck />} title="Очередь пуста" text="Новых жалоб нет." />;
+  }
+  return (
+    <div className="invite-grid">
+      {queue.data.map((r) => {
+        const main = TARGET_ACTION[r.targetType];
+        return (
+          <article key={r.id} className="invite-card">
+            <div className="comment-head">
+              <b>{TARGET_LABEL[r.targetType]}</b>
+              <span className="muted">{relativeTime(r.createdAt)}</span>
+            </div>
+            <p>
+              {r.targetEventId
+                ? <Link to={`/events/${r.targetEventId}`}>{r.targetLabel}</Link>
+                : r.targetType === 'user'
+                  ? <Link to={`/users/${r.targetId}`}>{r.targetLabel}</Link>
+                  : r.targetLabel ?? 'Цель не найдена'}
+            </p>
+            <p className="note">{r.reason}</p>
+            <p className="muted small">Автор жалобы: {r.authorName}</p>
+            <div className="invite-actions">
+              <Button variant="danger" block disabled={r.targetActive === false || act.isPending} onClick={() => act.mutate({ id: r.id, action: main.action })}>
+                {main.label}
+              </Button>
+              <Button block disabled={act.isPending} onClick={() => act.mutate({ id: r.id, action: 'RESOLVE' })}>Закрыть без мер</Button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function Imports() {
+  const client = useQueryClient();
+  const toast = useToast();
+  const file = useRef<HTMLInputElement>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const history = useQuery({ queryKey: ['imports'], queryFn: api.imports });
+  const done = (r: ImportResult) => {
+    setResult(r);
+    client.invalidateQueries();
+  };
+  const sync = useMutation({
+    mutationFn: api.sync,
+    onSuccess: done,
+    onError: (e: Error) => {
+      toast(e.message, 'error');
+      setResult(null);
+      client.invalidateQueries({ queryKey: ['imports'] });
+    },
+  });
+  const upload = useMutation({
+    mutationFn: api.uploadSnapshot,
+    onSuccess: done,
+    onError: (e: Error) => {
+      toast(e.message, 'error');
+      client.invalidateQueries({ queryKey: ['imports'] });
+    },
+  });
+  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0];
+    if (!chosen) return;
+    upload.mutate(await chosen.text());
+    e.target.value = '';
+  };
+  return (
+    <div className="stack">
+      <div className="note">
+        <b>Откуда берутся события</b>
+        <p>Реальная афиша из KudaGo: напрямую по API или из сохранённой выгрузки, если сервер не может достучаться до API. Повторная загрузка обновляет события и не создаёт дублей.</p>
+      </div>
+      <div className="stack-row">
+        <Button variant="primary" loading={sync.isPending} onClick={() => sync.mutate()}>
+          <CloudDownload aria-hidden /> Синхронизировать с KudaGo
+        </Button>
+        <Button loading={upload.isPending} onClick={() => file.current?.click()}>
+          <Upload aria-hidden /> Загрузить выгрузку JSON
+        </Button>
+        <input ref={file} type="file" accept="application/json,.json" hidden aria-label="Файл выгрузки" onChange={onFile} />
+      </div>
+      {result && (
+        <p className="status-line" role="status">
+          <CheckCircle2 aria-hidden /> Загружено событий: {result.processed}, ошибок: {result.errors}
+        </p>
+      )}
+      <h2 className="section-title">История запусков</h2>
+      {history.isLoading && <Skeleton />}
+      {history.isError && <ErrorBlock error={history.error} retry={() => history.refetch()} />}
+      {history.data?.length === 0 && <p className="hint">Импорт ещё не запускался.</p>}
+      <div className="people">
+        {history.data?.map((run) => (
+          <div key={run.id} className="import-row">
+            {run.status === 'SUCCESS' ? <CheckCircle2 className="ok" aria-hidden /> : <XCircle className="bad" aria-hidden />}
+            <div>
+              <b>{run.status === 'SUCCESS' ? 'Успешно' : run.status === 'PARTIAL' ? 'Частично' : run.status === 'RUNNING' ? 'Идёт' : 'Сбой'}</b>
+              <p className="muted small">
+                {relativeTime(run.startedAt)} · событий: {run.processedCount}, ошибок: {run.errorCount}
+              </p>
+              {run.lastError && <p className="muted small">{run.lastError}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function Admin() {
+  const [tab, setTab] = useState<'reports' | 'imports'>('reports');
+  return (
+    <div className="page">
+      <PageHeader title="Модерация" back="/profile" />
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: 'reports', label: 'Жалобы' },
+          { value: 'imports', label: 'Импорт афиши' },
+        ]}
+      />
+      {tab === 'reports' ? <Moderation /> : <Imports />}
+    </div>
+  );
+}
