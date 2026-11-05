@@ -1,17 +1,17 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, CalendarDays, ChevronRight, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, Users } from 'lucide-react';
 import { api } from '../api';
 import { plural, relativeTime } from '../format';
 import { PageHeader } from '../layout';
 import { Avatar, Chip, EmptyState, ErrorBlock, Skeleton } from '../ui';
 
 export function Social() {
-  const people = useQuery({ queryKey: ['people'], queryFn: () => api.suggested(1) });
+  const people = useQuery({ queryKey: ['people'], queryFn: () => api.suggested(6) });
   const taste = useQuery({ queryKey: ['taste'], queryFn: api.taste });
   const feed = useQuery({ queryKey: ['feed'], queryFn: () => api.feed(10) });
-  const twin = people.data?.[0];
+  const [twin, ...others] = people.data ?? [];
 
   const plate = useMemo(() => ({
     cats: (taste.data ?? []).filter((s) => s.kind === 'category').slice(0, 3),
@@ -21,6 +21,8 @@ export function Social() {
   return (
     <div className="page">
       <PageHeader title="Соцсеть" />
+      <div className="social-grid">
+      <div className="grid-col">
       <h2>Подходящие вам</h2>
       {people.isLoading && <Skeleton rows={1} />}
       {people.isError && <ErrorBlock error={people.error} retry={() => people.refetch()} />}
@@ -29,10 +31,10 @@ export function Social() {
           <div className="twin-top">
             <Avatar name={twin.displayName} avatarKey={twin.avatarKey} size={42} />
             <div>
-              <span className="twin-label">Двойник вкуса · {twin.similarity}%</span>
+              <span className="twin-label">Двойник вкуса</span>
               <b>{twin.displayName} · @{twin.nickname}</b>
             </div>
-            <ChevronRight className="row-arrow" aria-hidden />
+            <span className="twin-percent">{twin.similarity}%</span>
           </div>
           <p>
             {twin.sharedCount > 0
@@ -61,7 +63,26 @@ export function Social() {
         )}
       </Link>
 
-      <h2 className="section-title">Говорят о событиях</h2>
+      {others.length > 0 && (
+        <>
+          <h2 className="section-title">Ещё похожие</h2>
+          <div className="people">
+            {others.map((p) => (
+              <Link key={p.userId} to={`/users/${p.userId}`} className="person-row">
+                <Avatar name={p.displayName} avatarKey={p.avatarKey} size={44} />
+                <div>
+                  <b>{p.displayName}</b>
+                  <p className="muted">{p.interests.slice(0, 3).join(' · ')}</p>
+                </div>
+                <span className="match">{p.similarity}%</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+      </div>
+      <div className="grid-col">
+      <h2>Говорят о событиях</h2>
       {feed.isLoading && <Skeleton />}
       {feed.isError && <ErrorBlock error={feed.error} retry={() => feed.refetch()} />}
       {feed.data?.length === 0 && <p className="hint">Пока никто ничего не обсуждает.</p>}
@@ -79,6 +100,8 @@ export function Social() {
             </Link>
           </article>
         ))}
+      </div>
+      </div>
       </div>
     </div>
   );

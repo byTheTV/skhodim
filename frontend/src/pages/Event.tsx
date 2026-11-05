@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Check, ChevronRight, ExternalLink, Heart, MessageCircle, Send, Share2, Star, Users } from 'lucide-react';
@@ -7,7 +7,7 @@ import { useAuth } from '../auth';
 import { eventDate, metroLabel, plural, price, relativeTime } from '../format';
 import { PageHeader } from '../layout';
 import {
-  Avatar, Button, Cover, EmptyState, ErrorBlock, EventTags, ReportButton, Sheet, Skeleton, Toggle, useToast,
+  Avatar, Button, Cover, coverStyle, EmptyState, ErrorBlock, EventTags, ReportButton, Sheet, Skeleton, Toggle, useConfetti, useToast,
 } from '../ui';
 
 /** Серая карточка контекста из макета: обложка 44×48 и три строки. */
@@ -166,6 +166,7 @@ export function EventPage() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const toast = useToast();
+  const confetti = useConfetti();
   const [shareOpen, setShareOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [sessionChoice, setSessionChoice] = useState<number | null>(null);
@@ -197,6 +198,7 @@ export function EventPage() {
       (on ? api.goingOn(id, session) : api.goingOff(id, session)),
     onSuccess: (_, vars) => {
       refresh();
+      if (vars.on) confetti();
       client.invalidateQueries({ queryKey: ['going', id] });
       toast(vars.on ? 'Вы идёте! Теперь видно других желающих' : '«Хочу пойти» снято');
     },
@@ -251,21 +253,30 @@ export function EventPage() {
           </>
         )}
       />
+      <section
+        className={`event-hero ${event.coverUrl ? 'event-hero-photo' : ''}`}
+        style={{
+          '--card-bg': event.coverUrl ? '#14062E' : coverStyle(event.categories).bg,
+          '--card-fg': event.coverUrl ? '#FFFFFF' : coverStyle(event.categories).fg,
+        } as CSSProperties}
+      >
+        <Cover event={event} className="event-cover" />
+        <div className="event-hero-scrim" aria-hidden />
+        <div className="event-hero-body">
+          <h2 className="event-title">{event.title}</h2>
+          <p className="line-strong">{eventDate(shownSession?.startsAt ?? event.startsAt, shownSession?.endsAt ?? event.endsAt)}</p>
+          <p className="line">{[event.placeName, event.address].filter(Boolean).join(' · ') || 'Место уточняется'}</p>
+          {(event.metro || mapUrl) && (
+            <p className="line muted">
+              {metroLabel(event.metro)}
+              {event.metro && mapUrl && ' · '}
+              {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer">На карте</a>}
+            </p>
+          )}
+        </div>
+      </section>
       <div className="event-layout">
         <div className="event-main">
-          <Cover event={event} className="event-cover" />
-          <h2 className="event-title">{event.title}</h2>
-          <div className="meta">
-            <p className="line-strong">{eventDate(shownSession?.startsAt ?? event.startsAt, shownSession?.endsAt ?? event.endsAt)}</p>
-            <p className="line">{[event.placeName, event.address].filter(Boolean).join(' · ') || 'Место уточняется'}</p>
-            {(event.metro || mapUrl) && (
-              <p className="line muted">
-                {metroLabel(event.metro)}
-                {event.metro && mapUrl && ' · '}
-                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer">На карте</a>}
-              </p>
-            )}
-          </div>
           <EventTags event={event} limit={4} />
           {tags.length > 0 && <p className="tags-line">{tags.map((t) => `#${t.name}`).join(' ')}</p>}
           {event.description && (
@@ -387,7 +398,7 @@ export function Comments() {
     input.current?.focus();
   };
   return (
-    <div className="page">
+    <div className="page page-narrow">
       <PageHeader title="Комментарии" back />
       {details.data && <EventMini event={details.data.summary} />}
       <h2 className="section-title">Обсуждение · {comments.data?.length ?? 0}</h2>

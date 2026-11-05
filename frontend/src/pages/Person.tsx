@@ -42,6 +42,8 @@ export function Person() {
   return (
     <div className="page">
       <PageHeader title="Профиль участника" back />
+      <div className="person-grid">
+      <div className="grid-col">
       <section className="person-head">
         <Avatar name={profile.displayName} avatarKey={profile.avatarKey} size={72} />
         <div>
@@ -51,10 +53,9 @@ export function Person() {
       </section>
       {profile.bio && <p className="bio">{profile.bio}</p>}
       <div className="chips">{profile.interests.map((i) => <Chip key={i}>{i}</Chip>)}</div>
-      <hr className="divider" />
 
       {profile.similarity != null && (
-        <section className="block">
+        <section className="block panel-box">
           <h2>Двойник вкуса · {profile.similarity}%</h2>
           {sharedLikes.length > 0 ? (
             <>
@@ -70,7 +71,7 @@ export function Person() {
       )}
 
       {recentLikes.length > 0 && (
-        <section className="block">
+        <section className="block panel-box">
           <h2>Недавние лайки</h2>
           <ul className="heart-list">
             {recentLikes.slice(0, 3).map((e) => (
@@ -82,6 +83,8 @@ export function Person() {
         </section>
       )}
 
+      </div>
+      <div className="grid-col">
       {plan ? (
         <section className="invite-panel">
           <h2>Вы оба хотите пойти</h2>
@@ -104,6 +107,8 @@ export function Person() {
       )}
 
       <ReportButton targetType="user" targetId={id} label="Пожаловаться на профиль" />
+      </div>
+      </div>
     </div>
   );
 }

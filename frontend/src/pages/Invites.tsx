@@ -157,7 +157,7 @@ export function InviteStatus() {
           : 'Если вы примете приглашение, откроется чат на двоих.');
 
   return (
-    <div className="page">
+    <div className="page page-narrow">
       <PageHeader title="Приглашение" back />
       <div className={`status-hero status-hero-${r.status.toLowerCase()}`}>
         <span className="status-icon">

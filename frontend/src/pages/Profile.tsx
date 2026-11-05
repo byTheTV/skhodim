@@ -56,6 +56,8 @@ export function Profile() {
   return (
     <div className="page">
       <PageHeader title="Профиль" />
+      <div className="profile-grid">
+      <div className="grid-col">
       <section className="person-head">
         <Avatar name={name} avatarKey={p.avatarKey} size={72} />
         <div>
@@ -81,6 +83,7 @@ export function Profile() {
         ) : <p className="muted">Соберётся сама, когда вы отметите несколько событий.</p>}
       </Link>
 
+      </div>
       <nav className="menu" aria-label="Разделы профиля">
         <Link to="/invites" className="menu-row">
           <Mail aria-hidden /><span>Приглашения</span>
@@ -127,6 +130,7 @@ export function Profile() {
           <LogOut aria-hidden /><span>Выйти</span><ChevronRight className="row-arrow" aria-hidden />
         </button>
       </nav>
+      </div>
     </div>
   );
 }
@@ -189,7 +193,7 @@ export function EditProfile() {
   if (!me) return <div className="page"><PageHeader title="Редактировать профиль" back /><Skeleton rows={4} /></div>;
 
   return (
-    <form className="page" onSubmit={submit}>
+    <form className="page page-narrow" onSubmit={submit}>
       <PageHeader title="Редактировать профиль" back="/profile" />
       <section>
         <h3 className="field-title">Цвет аватара</h3>
@@ -241,6 +245,39 @@ export function EditProfile() {
   );
 }
 
+const TRACK_COLORS = ['#CCFF00', '#FF2E88', '#00E5FF', '#FFD600'];
+
+/** Та самая пластинка: длина дорожки равна доле категории, под курсором крутится быстрее. */
+function Vinyl({ items }: { items: { name: string; percent: number }[] }) {
+  const radii = [84, 68, 52, 36];
+  return (
+    <svg className="vinyl" viewBox="0 0 200 200" role="img" aria-label={items.map((i) => `${i.name} ${i.percent}%`).join(', ')}>
+      <circle cx="100" cy="100" r="98" className="vinyl-disc" />
+      {[92, 76, 60, 44].map((r) => <circle key={r} cx="100" cy="100" r={r} className="vinyl-groove" />)}
+      {items.slice(0, 4).map((item, i) => {
+        const r = radii[i];
+        const length = 2 * Math.PI * r;
+        return (
+          <circle
+            key={item.name}
+            cx="100"
+            cy="100"
+            r={r}
+            className="vinyl-track"
+            stroke={TRACK_COLORS[i]}
+            strokeDasharray={`${Math.max(8, (length * item.percent) / 100)} ${length}`}
+            transform="rotate(-90 100 100)"
+          >
+            <title>{item.name}: {item.percent}%</title>
+          </circle>
+        );
+      })}
+      <circle cx="100" cy="100" r="22" className="vinyl-label" />
+      <circle cx="100" cy="100" r="4" className="vinyl-hole" />
+    </svg>
+  );
+}
+
 function ShareBars({ title, items }: { title: string; items: { name: string; percent: number }[] }) {
   if (!items.length) return null;
   return (
@@ -263,7 +300,7 @@ function ShareBars({ title, items }: { title: string; items: { name: string; per
 export function Taste() {
   const { me } = useAuth();
   const taste = useQuery({ queryKey: ['taste'], queryFn: api.taste });
-  const people = useQuery({ queryKey: ['people'], queryFn: () => api.suggested(1) });
+  const people = useQuery({ queryKey: ['people'], queryFn: () => api.suggested(6) });
   const slices = taste.data ?? [];
   const cats = shares(slices, 'category', 5);
   const metros = shares(slices, 'metro', 4);
@@ -284,7 +321,9 @@ export function Taste() {
         />
       )}
       {cats.length > 0 && (
-        <>
+        <div className="profile-grid">
+          <div className="grid-col">
+          <div className="vinyl-block"><Vinyl items={cats} /></div>
           <div className="person-row person-plain">
             <Avatar name={name} avatarKey={me?.profile.avatarKey} size={48} />
             <div>
@@ -293,8 +332,9 @@ export function Taste() {
             </div>
           </div>
           <p className="bio">Чаще всего вы выбираете: {cats.slice(0, 3).map((c) => c.name.toLowerCase()).join(', ')}.</p>
+          </div>
+          <div className="grid-col">
           <ShareBars title="Что вам нравится" items={cats} />
-          <hr className="divider" />
           <ShareBars title="Где любите бывать" items={metros} />
           <ShareBars title="Любимые площадки" items={places} />
           <div className="note">
@@ -305,7 +345,8 @@ export function Taste() {
             </p>
           </div>
           <Link to="/social" className="btn btn-secondary btn-block"><Users aria-hidden /> К подходящим людям</Link>
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -319,7 +319,7 @@ test('тема: выбор сохраняется после перезагру�
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe('rgb(21, 20, 28)');
+  expect(bg).toBe('rgb(20, 10, 51)');
   await page.getByLabel('Тема оформления').selectOption('auto');
   await page.context().close();
 });

@@ -3,7 +3,7 @@ import {
   type ButtonHTMLAttributes, type ReactNode,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useMutation } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeft, Baby, BookOpen, Brush, ChevronRight, Dumbbell, Film, Flag, Footprints, Image as ImageIcon,
@@ -17,6 +17,41 @@ import { eventDate, place, price } from './format';
 type Toast = { id: number; text: string; tone: 'ok' | 'error' };
 const ToastContext = createContext<(text: string, tone?: Toast['tone']) => void>(() => {});
 export const useToast = () => useContext(ToastContext);
+const ConfettiContext = createContext<() => void>(() => {});
+/** Залп конфетти: лайк и «Хочу пойти» должны ощущаться как маленький праздник. */
+export const useConfetti = () => useContext(ConfettiContext);
+
+const CONFETTI = ['#FF2E88', '#CCFF00', '#FFD600', '#00E5FF', '#B14DFF', '#FF5A1F', '🎉', '✨', '🔥', '💜'];
+
+function ConfettiBurst({ seed }: { seed: number }) {
+  const pieces = Array.from({ length: 34 }, (_, i) => {
+    const angle = ((i * 137.5 + seed * 40) % 360) * (Math.PI / 180);
+    const distance = 160 + ((i * 53 + seed * 17) % 320);
+    return {
+      id: i,
+      item: CONFETTI[(i + seed) % CONFETTI.length],
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance - 120,
+      rotate: (i * 61) % 720,
+    };
+  });
+  return (
+    <div className="confetti" aria-hidden>
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          className={p.item.startsWith('#') ? 'confetti-piece' : 'confetti-emoji'}
+          style={p.item.startsWith('#') ? { background: p.item } : undefined}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 0.4, rotate: 0 }}
+          animate={{ x: p.x, y: p.y + 260, opacity: 0, scale: 1.1, rotate: p.rotate }}
+          transition={{ duration: 1.1, ease: [0.15, 0.7, 0.4, 1] }}
+        >
+          {p.item.startsWith('#') ? '' : p.item}
+        </motion.span>
+      ))}
+    </div>
+  );
+}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -26,9 +61,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((list) => [...list, { id, text, tone }]);
     window.setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 3500);
   }, []);
+  const reduceMotion = useReducedMotion();
+  const [bursts, setBursts] = useState<number[]>([]);
+  const fire = useCallback(() => {
+    if (reduceMotion) return;
+    const id = nextId.current++;
+    setBursts((list) => [...list, id]);
+    window.setTimeout(() => setBursts((list) => list.filter((b) => b !== id)), 1300);
+  }, [reduceMotion]);
   return (
     <ToastContext.Provider value={push}>
-      {children}
+      <ConfettiContext.Provider value={fire}>{children}</ConfettiContext.Provider>
+      {bursts.map((b) => <ConfettiBurst key={b} seed={b} />)}
       <div className="toasts" role="status" aria-live="polite">
         <AnimatePresence>
           {toasts.map((t) => (
@@ -164,18 +208,18 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-/* ---------- Аватар: первая буква имени на мягком цвете ---------- */
+/* ---------- Аватар: первая буква имени на сочном цвете ---------- */
 
 export const STICKER_COUNT = 8;
 const AVATAR_COLORS: [string, string][] = [
-  ['#e4dffe', '#3f25c4'],
-  ['#ffe2da', '#a8320f'],
-  ['#dff3d8', '#2c6b1c'],
-  ['#ffe0ec', '#a81f58'],
-  ['#fff0c7', '#7a5600'],
-  ['#d7eefb', '#125f8c'],
-  ['#d6f3ee', '#0f6b5e'],
-  ['#ebe4d8', '#5f4c2c'],
+  ['#CCFF00', '#14062E'],
+  ['#FF2E88', '#14062E'],
+  ['#00E5FF', '#14062E'],
+  ['#FFD600', '#14062E'],
+  ['#B14DFF', '#14062E'],
+  ['#FF5A1F', '#14062E'],
+  ['#00D9A3', '#14062E'],
+  ['#FFB3D9', '#14062E'],
 ];
 
 export function Avatar({ name, avatarKey, size = 44 }: { name: string; avatarKey?: string | null; size?: number }) {
@@ -188,7 +232,7 @@ export function Avatar({ name, avatarKey, size = 44 }: { name: string; avatarKey
   return (
     <span
       className="avatar"
-      style={{ width: size, height: size, background: bg, color: fg, fontSize: Math.round(size * 0.4) }}
+      style={{ width: size, height: size, background: bg, color: fg, fontSize: Math.round(size * 0.42) }}
       aria-hidden
     >
       {Array.from(name)[0]?.toUpperCase() ?? '?'}
@@ -196,23 +240,71 @@ export function Avatar({ name, avatarKey, size = 44 }: { name: string; avatarKey
   );
 }
 
-/* ---------- Обложка: фото источника или спокойная заглушка со значком категории ---------- */
+/* ---------- Обложка: фото источника или кислотный плакат категории ---------- */
 
-const COVER_STYLES: Record<string, { bg: string; fg: string; icon: LucideIcon }> = {
-  'Концерт': { bg: '#e4dffe', fg: '#3f25c4', icon: Music },
-  'Театр': { bg: '#ffe2da', fg: '#a8320f', icon: Theater },
-  'Выставка': { bg: '#d6f3ee', fg: '#0f6b5e', icon: Palette },
-  'Спорт': { bg: '#dff3d8', fg: '#2c6b1c', icon: Dumbbell },
-  'Лекция': { bg: '#fff0c7', fg: '#7a5600', icon: BookOpen },
-  'Фестиваль': { bg: '#ffe0ec', fg: '#a81f58', icon: PartyPopper },
-  'Кино': { bg: '#d7eefb', fg: '#125f8c', icon: Film },
-  'Мастер-класс': { bg: '#ebe4d8', fg: '#5f4c2c', icon: Brush },
-  'Вечеринка': { bg: '#f3dcfb', fg: '#7a1f9c', icon: Sparkles },
-  'Стендап': { bg: '#ffe9d1', fg: '#94500a', icon: Mic },
-  'Прогулка': { bg: '#dcf2e4', fg: '#1a6b3c', icon: Footprints },
-  'Детям': { bg: '#fdf0d0', fg: '#86600a', icon: Baby },
+type CoverStyle = { bg: string; fg: string; accent: string; icon: LucideIcon };
+const INK = '#14062E';
+const COVER_STYLES: Record<string, CoverStyle> = {
+  'Концерт': { bg: '#FF2E88', fg: INK, accent: '#FFD600', icon: Music },
+  'Театр': { bg: '#FF5A1F', fg: INK, accent: '#FFD600', icon: Theater },
+  'Выставка': { bg: '#00D9A3', fg: INK, accent: '#6A2BFF', icon: Palette },
+  'Спорт': { bg: '#CCFF00', fg: INK, accent: '#FF2E88', icon: Dumbbell },
+  'Лекция': { bg: '#FFD600', fg: INK, accent: '#2B1BFF', icon: BookOpen },
+  'Фестиваль': { bg: '#B14DFF', fg: INK, accent: '#CCFF00', icon: PartyPopper },
+  'Кино': { bg: '#2B1BFF', fg: '#FFFFFF', accent: '#FFD600', icon: Film },
+  'Мастер-класс': { bg: '#00C2FF', fg: INK, accent: '#FF5A1F', icon: Brush },
+  'Вечеринка': { bg: '#14062E', fg: '#CCFF00', accent: '#FF2E88', icon: Sparkles },
+  'Стендап': { bg: '#FF9F1C', fg: INK, accent: '#B14DFF', icon: Mic },
+  'Прогулка': { bg: '#7CF0A0', fg: INK, accent: '#2B1BFF', icon: Footprints },
+  'Детям': { bg: '#FFB3D9', fg: INK, accent: '#2B1BFF', icon: Baby },
 };
-const COVER_DEFAULT = { bg: '#ece9f8', fg: '#4326d1', icon: ImageIcon };
+const COVER_DEFAULT: CoverStyle = { bg: '#6A2BFF', fg: '#FFFFFF', accent: '#CCFF00', icon: ImageIcon };
+
+export function coverStyle(categories: string[]): CoverStyle {
+  return COVER_STYLES[categories[0]] ?? COVER_DEFAULT;
+}
+
+/** Узор плаката: один из пяти, номер зависит от события, поэтому у карточки свой постоянный вид. */
+function PosterPattern({ seed, color }: { seed: number; color: string }) {
+  const variant = seed % 5;
+  const cx = 60 + ((seed * 37) % 280);
+  const cy = 60 + ((seed * 53) % 200);
+  return (
+    <svg className="poster" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" aria-hidden>
+      {variant === 0 && Array.from({ length: 12 }, (_, i) => {
+        const from = (i * 30 * Math.PI) / 180;
+        const to = ((i * 30 + 14) * Math.PI) / 180;
+        return (
+          <polygon
+            key={i}
+            fill={color}
+            points={`${cx},${cy} ${cx + Math.cos(from) * 900},${cy + Math.sin(from) * 900} ${cx + Math.cos(to) * 900},${cy + Math.sin(to) * 900}`}
+          />
+        );
+      })}
+      {variant === 1 && [0, 1, 2, 3, 4, 5].map((i) => (
+        <circle key={i} cx={cx} cy={cy} r={60 + i * 70} fill="none" stroke={color} strokeWidth="26" />
+      ))}
+      {variant === 2 && Array.from({ length: 96 }, (_, i) => (
+        (i + Math.floor(i / 8)) % 2 === 0
+          ? <rect key={i} x={(i % 8) * 50} y={Math.floor(i / 8) * 50} width="50" height="50" fill={color} />
+          : null
+      ))}
+      {variant === 3 && Array.from({ length: 54 }, (_, i) => (
+        <circle key={i} cx={25 + (i % 6) * 70} cy={25 + Math.floor(i / 6) * 70} r={8 + ((i * 7 + seed) % 22)} fill={color} />
+      ))}
+      {variant === 4 && [0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <path
+          key={i}
+          d={`M-20 ${40 + i * 90} Q 100 ${-20 + i * 90} 200 ${40 + i * 90} T 420 ${40 + i * 90}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="24"
+        />
+      ))}
+    </svg>
+  );
+}
 
 export function Cover({ event, className }: {
   event: Pick<EventSummary, 'eventId' | 'coverUrl' | 'categories' | 'title'>;
@@ -220,14 +312,17 @@ export function Cover({ event, className }: {
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [event.coverUrl]);
-  const style = COVER_STYLES[event.categories[0]] ?? COVER_DEFAULT;
+  const style = coverStyle(event.categories);
   const Icon = style.icon;
   return (
     <div className={`cover ${className ?? ''}`} style={{ background: style.bg, color: style.fg }}>
       {event.coverUrl && !failed ? (
         <img src={event.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       ) : (
-        <Icon aria-hidden />
+        <>
+          <PosterPattern seed={event.eventId} color={style.accent} />
+          <span className="cover-icon" style={{ background: style.bg }}><Icon aria-hidden /></span>
+        </>
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export function Shell() {
     <div className={`shell ${isChat ? 'shell-chat' : ''}`}>
       <a className="skip-link" href="#main">К содержимому</a>
       <aside className="sidebar">
-        <Link to="/" className="brand">Сходим</Link>
+        <Link to="/" className="logo" aria-label="Сходим, на главную">сходим<span>!</span></Link>
         <nav className="side-nav" aria-label="Основная навигация">
           {TABS.map((tab) => (
             <NavLink key={tab.to} to={tab.to} end={tab.end} className="side-link">

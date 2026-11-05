@@ -14,9 +14,16 @@ function AuthLayout({ title, subtitle, children, footer }: {
 }) {
   return (
     <div className="auth">
+      <aside className="auth-art" aria-hidden>
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+        <span className="blob blob-c" />
+        <h2>Куда сходить и <em>с кем</em></h2>
+        <p>Смахивай афишу Петербурга, отмечай, куда хочешь пойти, и находи компанию на тот же вечер.</p>
+      </aside>
       <main className="auth-main">
         <Link to="/" className="link-btn"><ArrowLeft aria-hidden /> К афише</Link>
-        <div className="auth-brand">Сходим</div>
+        <div className="logo auth-brand">сходим<span>!</span></div>
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>
         {children}
