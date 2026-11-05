@@ -562,7 +562,9 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
 .invite-grid .invite-card .btn:not(.btn-primary):not(.btn-danger) { background: #fff; color: var(--on-pop); }
 .invite-card-link { display: flex; flex-direction: column; gap: 5px; text-decoration: none; }
 .invite-card-link b { font: 400 17px/1.2 var(--display); }
-.invite-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+/* Кнопки и статус прижаты к низу карточки: в ряду они стоят на одной высоте, даже если название в две строки */
+.invite-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 4px; }
+.invite-card > .status-line { margin-top: auto; }
 .invite-actions .btn { min-height: 46px; padding: 8px 10px; }
 .status-pill { padding: 3px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 600; background: var(--panel); white-space: nowrap; }
 .status-accepted { background: var(--lime); color: var(--on-pop); }
@@ -756,7 +758,7 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
     padding: 10px 12px 2px; font: 400 14px/1.2 var(--display);
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .next-meta { padding: 0 12px 12px; font-size: 12.5px; color: var(--muted); }
+  .next-meta { margin-top: auto; padding: 4px 12px 12px; font-size: 12.5px; color: var(--muted); }
   .keys kbd {
     display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 6px; margin: 0 4px;
     border-radius: 7px; background: var(--surface); border: 1px solid var(--line); font: 600 13px/1 inherit;
@@ -776,9 +778,14 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
   .event-row-body h3 { font-size: 17px; }
   .event-row-link > .row-arrow { display: none; }
   .event-row-footer { margin: 0 16px 14px; }
+  /* Цена внизу плитки: в ряду цены стоят на одной линии, сколько бы строк ни заняло название */
+  .event-row-price { margin-top: auto; padding-top: 6px; }
   .event-row:hover { transform: translateY(-6px) rotate(-1deg); }
 
   .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+  /* В сетке имена начинаются с одной высоты, а не по центру разной по высоте карточки */
+  .people .person-row { align-items: flex-start; }
+  .people .person-row > svg:last-child { align-self: center; }
   .invite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
   .profile-grid, .person-grid, .social-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
 
