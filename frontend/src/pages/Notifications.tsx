@@ -41,6 +41,7 @@ export function Notifications() {
       <PageHeader
         title="Уведомления"
         back="/profile"
+        section
         actions={hasUnread ? (
           <button type="button" className="icon-btn" aria-label="Прочитать все" title="Прочитать все" onClick={() => readAll.mutate()}>
             <CheckCheck aria-hidden />

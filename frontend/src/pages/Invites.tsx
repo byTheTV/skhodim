@@ -68,7 +68,7 @@ export function Invites() {
   const history = (tab === 'incoming' ? incoming : outgoing).filter((r) => r.status !== 'PENDING');
   return (
     <div className="page">
-      <PageHeader title="Приглашения" back />
+      <PageHeader title="Приглашения" back section />
       <p className="page-sub">Входящие: примите или отклоните. Исходящие: дождитесь ответа. Отсюда же открывается чат после принятия.</p>
       <Tabs
         value={tab}

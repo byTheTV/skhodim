@@ -158,7 +158,7 @@ export function Admin() {
   const [tab, setTab] = useState<'reports' | 'imports'>('reports');
   return (
     <div className="page">
-      <PageHeader title="Модерация" back="/profile" />
+      <PageHeader title="Модерация" back="/profile" section />
       <Tabs
         value={tab}
         onChange={setTab}

@@ -148,7 +148,7 @@ export function Swipe() {
   }, [feed.data]);
 
   const current = deck[0];
-  const upNext = deck.slice(1, 4);
+  const upNext = deck.slice(1, 7);
 
   // Запас качается по одному и с низким приоритетом: постер на экране не должен делить канал со всей очередью.
   const preloaded = useRef(new Set<string>());
@@ -257,14 +257,6 @@ export function Swipe() {
 
   return (
     <div className="page page-swipe">
-      <aside className="swipe-headline">
-        <h1>Куда <em>сходим</em> сегодня?</h1>
-        {cityRow}
-        <div className="chips">{actions}</div>
-        {filterChips}
-        <p className="hint">Стрелка влево — пропуск, вправо — лайк. Или тащите карточку мышкой.</p>
-      </aside>
-
       <div className="swipe-center">
         <div className="swipe-intro-mobile">
           <PageHeader title={<span className="logo">сходим<span>!</span></span>} actions={actions} />
@@ -333,14 +325,26 @@ export function Swipe() {
         </div>
       </div>
 
-      <aside className="swipe-next" aria-label="Дальше в ленте">
-        {upNext.length > 0 && <h2>Дальше в ленте</h2>}
-        {upNext.map((e) => (
-          <Link key={e.eventId} to={`/events/${e.eventId}`} className="next-item">
-            <Cover event={e} className="next-cover" />
-            <span>{e.title}</span>
-          </Link>
-        ))}
+      <aside className="swipe-side">
+        <h1>Куда <em>сходим</em> сегодня?</h1>
+        <div className="swipe-tools">
+          <span className="city"><MapPin aria-hidden /> Санкт-Петербург</span>
+          <Button onClick={() => setFiltersOpen(true)} aria-label={`Фильтры${count ? `, активно: ${count}` : ''}`}>
+            <SlidersHorizontal aria-hidden /> Фильтры{count > 0 && <span className="dot-count">{count}</span>}
+          </Button>
+        </div>
+        {filterChips}
+        {upNext.length > 0 && <h2 className="section-title">Дальше в ленте</h2>}
+        <div className="next-grid">
+          {upNext.map((e) => (
+            <Link key={e.eventId} to={`/events/${e.eventId}`} className="next-item">
+              <Cover event={e} className="next-cover" />
+              <span className="next-title">{e.title}</span>
+              <span className="next-meta">{eventDate(e.startsAt, e.endsAt)}</span>
+            </Link>
+          ))}
+        </div>
+        <p className="hint keys"><kbd>←</kbd> пропуск <kbd>→</kbd> лайк, или тащите карточку мышкой</p>
       </aside>
 
       <FilterSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} value={filters} onApply={setFilters} />

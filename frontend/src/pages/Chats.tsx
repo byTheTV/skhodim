@@ -17,7 +17,7 @@ function ChatList({ activeId }: { activeId?: number }) {
 
   return (
     <div className="chat-list">
-      <PageHeader title="Чаты" back="/profile" />
+      <PageHeader title="Чаты" back="/profile" section />
       <p className="page-sub">Все переписки после принятых приглашений. Откройте диалог, чтобы продолжить обсуждение встречи.</p>
       {chats.isLoading && <Skeleton />}
       {chats.isError && <ErrorBlock error={chats.error} retry={() => chats.refetch()} />}

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon, SearchX, SlidersHorizontal, X } from 'lucide-react';
 import { api } from '../api';
@@ -8,7 +9,12 @@ import { PageHeader } from '../layout';
 import { Button, Chip, EmptyState, ErrorBlock, EventRow, Skeleton, useDebounced } from '../ui';
 
 export function Search() {
-  const [text, setText] = useState('');
+  const [params] = useSearchParams();
+  const [text, setText] = useState(() => params.get('q') ?? '');
+  const fromHeader = params.get('q');
+  useEffect(() => {
+    if (fromHeader !== null) setText(fromHeader);
+  }, [fromHeader]);
   const query = useDebounced(text.trim());
   const [filters, setFilters] = useFilters();
   const [open, setOpen] = useState(false);
@@ -22,7 +28,7 @@ export function Search() {
 
   return (
     <div className="page">
-      <PageHeader title="Поиск" back="/" />
+      <PageHeader title="Афиша" back="/" section />
       <div className="search-bar">
         <label className="search-input">
           <SearchIcon aria-hidden />
