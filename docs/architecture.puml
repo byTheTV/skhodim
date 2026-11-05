@@ -1,6 +1,6 @@
 @startuml architecture
-title ИС «Сходим» — диаграмма классов общей архитектуры (Этап 3)
-skinparam linetype ortho
+title ИС «Сходим»: диаграмма классов общей архитектуры (этапы 3 и 4)
+!pragma layout smetana
 skinparam packageStyle rectangle
 skinparam wrapWidth 160
 skinparam class {
@@ -12,12 +12,16 @@ hide empty members
 left to right direction
 
 package "Уровень представления (Этап 4)" as presentation #EEEEEE {
-  class "Web UI / REST-контроллеры" as UiStub
-  note right of UiStub
-    Появится на этапе 4:
-    Spring MVC/REST-контроллеры,
-    DTO запросов/ответов.
-  end note
+  class "React SPA" as Spa <<component>>
+  class AuthController
+  class EventController
+  class MeController
+  class CompanionController
+  class SocialController
+  class AdminController
+  class ApiExceptionHandler <<utility>>
+  class SpaConfig <<utility>>
+  class "Spring Security и JWT" as Security <<component>>
 }
 
 package "Уровень бизнес-логики" as business {
@@ -28,6 +32,8 @@ package "Уровень бизнес-логики" as business {
   class FeedbackService
   class ModerationService
   class ImportService
+  class PresentationService
+  class ShareCardService
   class RequestExpirationScheduler <<component>>
   class BusinessRuleException
   class NotFoundException
@@ -41,6 +47,7 @@ package "Уровень хранения" as storage {
   class FeedbackRepository
   class ModerationRepository
   class ImportRepository
+  class PresentationRepository
   class RowMappers <<utility>>
   class MoreRowMappers <<utility>>
 }
@@ -66,6 +73,7 @@ package "Доменная модель (22 сущности)" as domain {
   class CatalogEntry
   class RecommendedEvent
   class ConversationParticipant
+  class Views <<utility>>
 }
 
 package "PostgreSQL (Этап 2)" as db {
@@ -80,7 +88,28 @@ package "PostgreSQL (Этап 2)" as db {
   end note
 }
 
-UiStub ..> business : будет вызывать\n(Этап 4)
+Spa --> Security : REST /api/v1, JSON
+Security --> AuthController
+Security --> EventController
+Security --> MeController
+Security --> CompanionController
+Security --> SocialController
+Security --> AdminController
+SpaConfig ..> Spa : отдаёт статику из JAR
+AuthController --> UserService
+EventController --> CatalogService
+EventController --> ReactionService
+EventController --> FeedbackService
+EventController --> ShareCardService
+EventController --> PresentationService
+MeController --> UserService
+MeController --> PresentationService
+CompanionController --> CompanionService
+CompanionController --> PresentationService
+SocialController --> PresentationService
+AdminController --> ImportService
+AdminController --> ModerationService
+AdminController --> PresentationService
 
 UserService --> UserRepository
 CatalogService --> CatalogRepository
@@ -89,6 +118,7 @@ CompanionService --> CompanionRepository
 FeedbackService --> FeedbackRepository
 ModerationService --> ModerationRepository
 ImportService --> ImportRepository
+PresentationService --> PresentationRepository
 RequestExpirationScheduler --> CompanionService : expireRequests()
 
 business ..> BusinessRuleException
@@ -104,6 +134,8 @@ ReactionIntentionRepository ..> MoreRowMappers
 CompanionRepository ..> MoreRowMappers
 FeedbackRepository ..> MoreRowMappers
 ModerationRepository ..> MoreRowMappers
+PresentationRepository ..> RowMappers
+PresentationRepository ..> Views
 
 storage --> domain : маппинг строк\nResultSet -> record
 

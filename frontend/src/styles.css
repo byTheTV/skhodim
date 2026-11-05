@@ -401,6 +401,7 @@ input:not([type='search']):not([type='file']), textarea, select {
 .menu-row select { width: auto; min-height: 38px; padding: 6px 10px; }
 textarea { resize: vertical; }
 input:focus, textarea:focus, select:focus { outline: 3px solid var(--violet); outline-offset: 1px; }
+.date-range { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-error { color: var(--danger); font-weight: 700; font-size: 13.5px; }
 
 .sheet-backdrop {
@@ -675,6 +676,7 @@ a.menu-row:hover, button.menu-row:hover { background: var(--surface-2); }
   .shell:has(.page-chats) .main { padding-bottom: 0; }
   .conversation { height: calc(100dvh - 32px); }
   .chats-right .empty { height: 100%; justify-content: center; }
+  .chats-right .page-header > .icon-btn { display: none; }
 
   .auth-art {
     display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; flex: 1; padding: 48px; overflow: hidden;

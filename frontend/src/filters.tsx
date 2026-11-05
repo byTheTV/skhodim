@@ -1,17 +1,19 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, type EventQuery } from './api';
-import { weekendLabel, whenRange, type WhenKey } from './format';
+import { customRange, weekendLabel, whenRange, type WhenKey } from './format';
 import { Button, Chip, Sheet, Toggle } from './ui';
 
 export type Filters = {
-  when: WhenKey;
+  when: WhenKey | 'custom';
+  dateFrom: string | null;
+  dateTo: string | null;
   categoryIds: number[];
   isFree: boolean;
   metro: string | null;
 };
 
-export const NO_FILTERS: Filters = { when: 'any', categoryIds: [], isFree: false, metro: null };
+export const NO_FILTERS: Filters = { when: 'any', dateFrom: null, dateTo: null, categoryIds: [], isFree: false, metro: null };
 
 const STORAGE_KEY = 'skhodim-filters';
 
@@ -40,7 +42,7 @@ export function useFilters(): [Filters, (next: Filters) => void] {
 
 export function filtersToQuery(filters: Filters): EventQuery {
   return {
-    ...whenRange(filters.when),
+    ...(filters.when === 'custom' ? customRange(filters.dateFrom, filters.dateTo) : whenRange(filters.when)),
     categoryIds: filters.categoryIds.length ? filters.categoryIds : undefined,
     isFree: filters.isFree || undefined,
     metro: filters.metro ?? undefined,
@@ -51,15 +53,19 @@ export function activeFilterCount(filters: Filters): number {
   return (filters.when !== 'any' ? 1 : 0) + filters.categoryIds.length + (filters.isFree ? 1 : 0) + (filters.metro ? 1 : 0);
 }
 
-const WHEN: { value: WhenKey; label: string }[] = [
+const WHEN: { value: Filters['when']; label: string }[] = [
   { value: 'any', label: 'Любая дата' },
   { value: 'today', label: 'Сегодня' },
   { value: 'tomorrow', label: 'Завтра' },
   { value: 'weekend', label: 'На выходных' },
+  { value: 'custom', label: 'Выбрать даты' },
 ];
 
-export function whenTitle(key: WhenKey): string {
-  return WHEN.find((w) => w.value === key)?.label ?? '';
+export function whenTitle(filters: Filters): string {
+  if (filters.when === 'custom') {
+    return [filters.dateFrom, filters.dateTo].filter(Boolean).map((d) => d!.split('-').reverse().join('.')).join(' — ') || 'Свои даты';
+  }
+  return WHEN.find((w) => w.value === filters.when)?.label ?? '';
 }
 
 export function FilterSheet({ open, onClose, value, onApply }: {
@@ -95,7 +101,18 @@ export function FilterSheet({ open, onClose, value, onApply }: {
             </Chip>
           ))}
         </div>
-        <p className="hint">{hint}</p>
+        {draft.when === 'custom' ? (
+          <div className="date-range">
+            <label className="field">
+              <span>С</span>
+              <input type="date" value={draft.dateFrom ?? ''} onChange={(e) => setDraft({ ...draft, dateFrom: e.target.value || null })} />
+            </label>
+            <label className="field">
+              <span>По</span>
+              <input type="date" min={draft.dateFrom ?? undefined} value={draft.dateTo ?? ''} onChange={(e) => setDraft({ ...draft, dateTo: e.target.value || null })} />
+            </label>
+          </div>
+        ) : <p className="hint">{hint}</p>}
       </section>
       <section className="filter-group">
         <h3>Что интересно</h3>

@@ -243,6 +243,38 @@ class ApiFlowIntegrationTest {
         assertTrue(listIds(token, "liked").contains(210L));
     }
 
+    /** FR-18: отзыв возможен только после окончания сеанса и при «хочу пойти» на этот сеанс. */
+    @Test
+    void reviewIsAllowedOnlyAfterAttendedSession() throws Exception {
+        Long sessionId = jdbc.queryForObject(
+                "INSERT INTO event_session (event_id, source_key, starts_at, ends_at) "
+                        + "VALUES (220, 'past-review', now() - interval '3 hours', now() - interval '1 hour') RETURNING id",
+                Long.class);
+        Long intentionId = jdbc.queryForObject(
+                "INSERT INTO event_intention (user_id, session_id) VALUES (17, ?) RETURNING id", Long.class, sessionId);
+        jdbc.update("INSERT INTO intention_period (intention_id, started_at) VALUES (?, now() - interval '1 day')", intentionId);
+
+        String token = login(17);
+        mvc.perform(auth(get("/api/v1/events/220"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.state.reviewSessionId").value(sessionId))
+                .andExpect(jsonPath("$.state.hasReview").value(false));
+        mvc.perform(auth(post("/api/v1/events/220/reviews"), token).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sessionId\":" + sessionId + ",\"body\":\"Отлично сходили\",\"rating\":5}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/events/220/reviews"))
+                .andExpect(jsonPath("$[0].body").value("Отлично сходили"))
+                .andExpect(jsonPath("$[0].rating").value(5));
+        mvc.perform(auth(get("/api/v1/events/220"), token))
+                .andExpect(jsonPath("$.state.hasReview").value(true));
+
+        // Без отметки на этот сеанс отзыв отклоняет триггер БД. Ошибка прерывает транзакцию, поэтому проверка последняя.
+        mvc.perform(auth(post("/api/v1/events/220/reviews"), login(18)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sessionId\":" + sessionId + ",\"body\":\"Чужой отзыв\",\"rating\":1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Отзыв доступен тем, кто отмечал «Хочу пойти» на этот сеанс"));
+    }
+
     @Test
     void swipeFeedHonoursFiltersAndSkipsRatedEvents() throws Exception {
         String token = login(15);

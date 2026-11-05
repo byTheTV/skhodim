@@ -1,0 +1,393 @@
+# -*- coding: utf-8 -*-
+"""
+Итоговый отчёт курсовой работы: этапы 1-3 из готовых отчётов плюс глава об этапе 4.
+Нужно: pip install python-docx docxcompose
+Запуск из корня репозитория: python docs/generate_final_report.py
+Результат: Skhodim_Final_Report.docx
+"""
+import os
+
+import docx
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt
+from docxcompose.composer import Composer
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCREENS = os.path.join(ROOT, "docs", "screens")
+OUT = os.path.join(ROOT, "Skhodim_Final_Report.docx")
+
+
+def strip_until(document, marker):
+    """Убирает титульный лист и старое содержание: всё до последнего абзаца с текстом marker."""
+    body = document.element.body
+    blocks = list(body)
+    last = None
+    for index, element in enumerate(blocks):
+        text = "".join(t.text or "" for t in element.iter(qn("w:t"))).strip()
+        if text == marker:
+            last = index
+    if last is None:
+        raise SystemExit(f"Не найден заголовок: {marker}")
+    for element in blocks[:last]:
+        if element.tag != qn("w:sectPr"):
+            body.remove(element)
+    return document
+
+
+master = docx.Document()
+normal = master.styles["Normal"]
+normal.font.name = "Times New Roman"
+normal.font.size = Pt(12)
+for name, size in (("Heading 1", 16), ("Heading 2", 14), ("Heading 3", 12)):
+    style = master.styles[name]
+    style.font.name = "Times New Roman"
+    style.font.size = Pt(size)
+    style.font.bold = True
+    style.font.color.rgb = None
+section = master.sections[0]
+section.left_margin = section.right_margin = Cm(2.5)
+section.top_margin = section.bottom_margin = Cm(2)
+
+
+def para(text="", bold=False, align=None, size=None, space_after=6):
+    p = master.add_paragraph()
+    run = p.add_run(text)
+    run.bold = bold
+    if size:
+        run.font.size = Pt(size)
+    if align is not None:
+        p.alignment = align
+    p.paragraph_format.space_after = Pt(space_after)
+    return p
+
+
+def bullet(text):
+    p = master.add_paragraph(text, style="List Bullet")
+    p.paragraph_format.space_after = Pt(3)
+    return p
+
+
+def table(headers, rows, widths=None):
+    t = master.add_table(rows=1, cols=len(headers))
+    t.style = "Table Grid"
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, header in enumerate(headers):
+        cell = t.rows[0].cells[i]
+        cell.text = ""
+        run = cell.paragraphs[0].add_run(header)
+        run.bold = True
+        run.font.size = Pt(10.5)
+    for row in rows:
+        cells = t.add_row().cells
+        for i, value in enumerate(row):
+            cells[i].text = ""
+            run = cells[i].paragraphs[0].add_run(str(value))
+            run.font.size = Pt(10.5)
+    if widths:
+        for row in t.rows:
+            for i, width in enumerate(widths):
+                row.cells[i].width = Cm(width)
+    para(space_after=4)
+    return t
+
+
+figure_no = [0]
+
+
+def caption(text):
+    figure_no[0] += 1
+    para(f"Рисунок {figure_no[0]} - {text}", align=WD_ALIGN_PARAGRAPH.CENTER, size=11)
+
+
+def figure(name, text, width=15.5):
+    master.add_picture(os.path.join(SCREENS, name), width=Cm(width))
+    master.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    caption(text)
+
+
+def phones(names, text):
+    t = master.add_table(rows=1, cols=len(names))
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, name in enumerate(names):
+        cell = t.rows[0].cells[i]
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cell.paragraphs[0].add_run().add_picture(os.path.join(SCREENS, name), width=Cm(15.2 / len(names)))
+    caption(text)
+
+
+# ---------- Титульный лист ----------
+for line, is_bold in (
+    ("Университет ИТМО", False),
+    ("Факультет программной инженерии и компьютерной техники", False),
+    ("", False),
+    ("Курсовая работа", True),
+    ("Информационные системы", False),
+    ("", False),
+    ("Итоговый отчёт", True),
+    ("Информационная система «Сходим»", True),
+    ("Этапы 1-4: от предметной области до готового приложения", False),
+    ("", False),
+):
+    para(line, bold=is_bold, align=WD_ALIGN_PARAGRAPH.CENTER, size=14)
+para("Выполнили", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para("Студенты группы P3319", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para("Целиков Д.А.", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para("Тарасов В.П.", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para("Проверила", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para("Лисицина В.В.", align=WD_ALIGN_PARAGRAPH.RIGHT)
+para()
+para("Санкт-Петербург", align=WD_ALIGN_PARAGRAPH.CENTER)
+para("2026 г.", align=WD_ALIGN_PARAGRAPH.CENTER)
+master.add_page_break()
+
+master.add_heading("Содержание", level=1)
+for line in (
+    "Часть 1. Этап 1: предметная область, требования, прецеденты, архитектура",
+    "Часть 2. Этап 2: проектирование и реализация базы данных",
+    "Часть 3. Этап 3: уровень хранения и уровень бизнес-логики",
+    "Часть 4. Этап 4: уровень представления, тестирование, развёртывание",
+):
+    para(line)
+para(
+    "Части 1-3 приведены в том виде, в каком сдавались на соответствующих этапах. "
+    "Всё, что на этапе 4 изменилось по сравнению с ними, перечислено в разделе 4.6."
+)
+master.add_page_break()
+
+composer = Composer(master)
+
+
+def append_stage(title, filename, first_heading):
+    master.add_heading(title, level=1)
+    stage = docx.Document(os.path.join(ROOT, filename))
+    strip_until(stage, first_heading)
+    composer.append(stage)
+    master.add_page_break()
+
+
+append_stage("Часть 1. Этап 1", "Otchet_Etap1_Skhodim.docx", "1. Введение")
+append_stage("Часть 2. Этап 2", "Skhodim_Etap_2_DB_full.docx", "1 Назначение и границы модели")
+append_stage("Часть 3. Этап 3", "Skhodim_Etap_3_Report.docx", "1 Назначение этапа и связь с этапами 1-2")
+
+# ---------- Часть 4 ----------
+master.add_heading("Часть 4. Этап 4", level=1)
+
+master.add_heading("4.1 Назначение этапа и состав решения", level=2)
+para(
+    "На этапе 4 реализован уровень представления для бизнес-процессов из этапа 1 и связаны все уровни системы. "
+    "React-приложение собирается вместе с серверной частью в один JAR (NFR-2), поэтому на сервере нужен только Java-процесс."
+)
+table(
+    ["Слой", "Технология", "Зачем"],
+    [
+        ("Клиент", "React 18, TypeScript, Vite", "Интерфейс на русском, строгая проверка типов"),
+        ("Навигация и данные", "React Router, TanStack Query", "Адреса экранов, кэш запросов, опрос новых сообщений"),
+        ("Анимация", "Framer Motion", "Жест свайпа, улетающая карточка"),
+        ("Сервер", "Spring Boot 3.3, Spring MVC, Spring Security, JWT", "REST /api/v1, роли, отдача статики"),
+        ("Хранение", "JdbcTemplate поверх pl/pgsql", "Все новые выборки реализованы функциями БД"),
+        ("БД", "PostgreSQL", "22 таблицы этапа 2, новые функции этапа 4"),
+        ("Автоматизация", "GitHub Actions, Playwright, JUnit", "Сборка, тесты, выкладка с откатом"),
+    ],
+    [3.5, 6, 6.5],
+)
+
+master.add_heading("4.2 Аудитория и визуальный стиль", level=2)
+para(
+    "Основная аудитория: студенты и молодые специалисты Петербурга примерно 18-30 лет, которые хотят выбраться на событие, "
+    "но не всегда имеют компанию. Это рабочая гипотеза команды: найденные открытые данные о досуге молодёжи косвенные, "
+    "а отдельного исследования о поиске компании на события найти не удалось, поэтому проверять её нужно на реальных пользователях."
+)
+para(
+    "Отсюда выбран стиль «вечерняя афиша»: ночной фиолетовый как основа, коралловый и лаймовый как акценты, контуры и стикеры "
+    "как на уличном плакате. Заголовки набраны шрифтом Unbounded, текст шрифтом Manrope, оба поддерживают кириллицу и поставляются "
+    "вместе с приложением. Есть светлая и тёмная темы. Если у события нет обложки, приложение рисует постер по его категории."
+)
+para(
+    "Макет в Figma использован как основа структуры экранов: 20 мобильных экранов и четыре вкладки навигации. "
+    "Цвет, типографика и анимации заданы заново, потому что макет был чёрно-белым наброском."
+)
+
+master.add_heading("4.3 Экраны", level=2)
+table(
+    ["Экран", "Адрес", "Что делает"],
+    [
+        ("Свайп", "/", "Карточки событий, лайк, пропуск, возврат, жесты и клавиши"),
+        ("Поиск и фильтры", "/search", "Текст, дата, категории, метро, бесплатные"),
+        ("Событие", "/events/:id", "Описание, сеансы, билеты, «Хочу пойти», карточка для сторис, отзыв"),
+        ("Комментарии", "/events/:id/comments", "Обсуждение, удаление своего, жалоба"),
+        ("Желающие", "/events/:id/going", "Видно только тем, кто сам идёт (FR-3)"),
+        ("Профиль участника", "/users/:id", "Интересы, совпадение вкуса, приглашение"),
+        ("Приглашения", "/invites, /invites/:id", "Входящие, исходящие, все статусы, отзыв"),
+        ("Чаты", "/chats, /chats/:id", "Список и переписка 1-к-1"),
+        ("Список", "/list", "Хочу пойти, понравилось, уже прошли"),
+        ("Соцсеть", "/social", "Двойник, подходящие люди, лента обсуждений"),
+        ("Профиль", "/profile, /profile/edit", "Настройки, тема, редактирование"),
+        ("Пластинка вкуса", "/profile/taste", "Доли категорий, станций и площадок"),
+        ("Уведомления", "/notifications", "Заявки, ответы, сообщения"),
+        ("Вход и регистрация", "/login, /register", "Двухшаговая регистрация с выбором интересов"),
+        ("Модерация", "/admin", "Очередь жалоб, импорт афиши, история запусков"),
+    ],
+    [3.5, 4.5, 8],
+)
+para(
+    "На рисунках ниже показаны тестовые данные с пометкой [ТЕСТ]: они загружены настоящим импортом, "
+    "но не являются реальной афишей (см. раздел 4.5). Имена участников вымышленные."
+)
+phones(["m-swipe.png", "m-event.png", "m-filters.png"], "Свайп, событие и фильтры на телефоне")
+phones(["m-going.png", "m-person.png", "m-invite-sent.png"], "Желающие, профиль участника, приглашение")
+phones(["m-invites.png", "m-chat.png", "m-lists.png"], "Входящие приглашения, чат и список")
+phones(["m-social.png", "m-taste.png", "m-profile.png"], "Соцсеть, пластинка вкуса и профиль")
+figure("d-swipe.png", "Свайп на компьютере: боковое меню и подсказка, что дальше в ленте")
+figure("d-event.png", "Страница события на компьютере: действия закреплены в правой колонке")
+figure("d-chat.png", "Чат на компьютере: список и переписка рядом")
+figure("d-social-dark.png", "Вкладка «Соцсеть» в тёмной теме")
+figure("d-admin.png", "Модерация: импорт афиши и история запусков")
+
+para("Экраны, которых не было в макете, но которые требуются отчётом этапа 1:", bold=True)
+for text in (
+    "вход и регистрация с выбором интересов (FR-1, FR-2);",
+    "раздел модерации и импорта (FR-20, FR-21);",
+    "форма отзыва после события и жалобы (FR-18, FR-21);",
+    "карточка для сторис с сохранением и Web Share (FR-16);",
+    "страница всех уведомлений (FR-19);",
+    "раскладка для компьютера и тёмная тема;",
+    "состояния загрузки, ошибки и пустых данных на каждом экране.",
+):
+    bullet(text)
+
+master.add_heading("4.4 Покрытие функциональных требований этапа 1", level=2)
+table(
+    ["Требование", "Где реализовано", "Как проверено"],
+    [
+        ("FR-1 регистрация, вход, роли", "/login, /register", "E2E, API"),
+        ("FR-2 профиль вкуса", "/profile/edit", "E2E, API"),
+        ("FR-3 приватность намерений", "going_people, /events/:id/going", "E2E, API"),
+        ("FR-4, FR-5 лента и свайп", "/", "E2E, API"),
+        ("FR-6, FR-9 карточка и билеты", "/events/:id", "E2E"),
+        ("FR-7 поиск и фильтры", "/search, лист фильтров", "E2E, API"),
+        ("FR-8 избранное", "/list", "E2E, API"),
+        ("FR-10, FR-11 хочу пойти, желающие", "/events/:id, /events/:id/going", "E2E, API"),
+        ("FR-12, FR-13 заявка и чат", "/users/:id, /invites, /chats", "E2E двух пользователей, API"),
+        ("FR-14 пластинка вкуса", "taste_plate, /profile/taste", "E2E, тест сервисов"),
+        ("FR-15 двойник", "suggest_people, find_twin, /social", "Тест сервисов, просмотр экрана"),
+        ("FR-16 карточка для сторис", "ShareCardService, лист на /events/:id", "E2E: PNG 540x960"),
+        ("FR-17 комментарии", "/events/:id/comments", "E2E"),
+        ("FR-18 отзывы", "Форма на /events/:id, триггер БД", "API; форма в браузере не проверялась"),
+        ("FR-19 уведомления", "/notifications, счётчики", "E2E, API"),
+        ("FR-20 импорт KudaGo", "ImportService, /admin", "Выгрузка: E2E, API. Прямой запрос: источник отвечает 403, см. 4.5"),
+        ("FR-21 модерация", "/admin", "E2E, API"),
+    ],
+    [5.5, 5.5, 5],
+)
+
+master.add_heading("4.5 Данные и импорт", level=2)
+para(
+    "Синтетические 1000 событий этапа 2 убраны из рабочей базы: скрипт 09_base_data.sql создаёт только справочники и демо-учётные записи, "
+    "а каталог заполняется исключительно импортом. Скрипт 04_seed.sql сохранён для автотестов, которые работают на отдельной базе."
+)
+para(
+    "На момент подготовки отчёта публичный API KudaGo отвечал HTTP 403 на запросы и с компьютера разработчика (с VPN и без него), "
+    "и с сервера helios. Отказ приходит от nginx, причина неизвестна. "
+    "Обход защиты сайта, например подмена заголовков, не применялся."
+)
+para(
+    "Раньше импорт при любой ошибке молча подставлял встроенный файл с двумя тестовыми событиями и сообщал об успехе. "
+    "Теперь сбой виден модератору и записывается в историю запусков, а каталог остаётся прежним (NFR-6). "
+    "Модератор может загрузить сохранённую выгрузку KudaGo: она проходит через тот же идемпотентный upsert по паре (source, external_id). "
+    "Источник Timepad требует токен и пока не подключён."
+)
+para(
+    "Демо-учётные записи вымышленные. Скрипт 10_demo_activity.sql добавляет им лайки, планы, заявки и переписку поверх уже импортированных событий "
+    "через те же функции БД, что и приложение."
+)
+
+master.add_heading("4.6 Изменения относительно этапов 1-3", level=2)
+table(
+    ["Было", "Стало", "Причина"],
+    [
+        ("Профиль без «о себе» (этап 1, раздел 2.2)", "display_name и bio до 160 символов", "Экран в Figma; это короткая подпись, а не анкета"),
+        ("1000 синтетических событий в рабочей базе", "Только импорт, синтетика в тестовой БД", "В афише должны быть настоящие события"),
+        ("Spring Data JPA (этап 1)", "JdbcTemplate (с этапа 3)", "Требование вызывать функции pl/pgsql"),
+        ("get_messages отдавала самые старые сообщения", "Отдаёт самые новые", "Найденная ошибка: новые сообщения длинного чата не показывались"),
+        ("Пометить прочитанным можно чужое уведомление", "mark_notification_read проверяет владельца", "Найденная уязвимость"),
+        ("Текст ошибок БД уходил клиенту", "Понятное сообщение на русском, детали в журнале", "Внутренности схемы не должны быть видны"),
+        ("Жалоба на пользователя могла скрыть событие с тем же id", "Действие проверяется по типу цели", "Найденная ошибка логики"),
+        ("Токен заблокированного работал до истечения", "Проверка при каждом запросе", "Блокировка должна действовать сразу"),
+        ("Просроченный токен ломал публичные страницы", "Запрос идёт как анонимный", "Гость всегда может смотреть афишу"),
+        ("Отметка могла попасть на прошедший сеанс", "Берётся ближайший незавершённый", "Найденная ошибка логики"),
+    ],
+    [6, 5.5, 4.5],
+)
+para("Схема БД по-прежнему содержит 22 таблицы: в user_profile добавлены три колонки, новых таблиц нет.")
+
+master.add_heading("4.7 Новые функции БД", level=2)
+para(
+    "Требование этапа 3 сохранено: запросы экранов выполняются функциями PostgreSQL из sql/08_stage4.sql, "
+    "а Java только передаёт параметры и переводит строки результата в записи."
+)
+table(
+    ["Функция", "Экран"],
+    [
+        ("event_summaries, catalog_metros, filter_unreacted", "Свайп, поиск, фильтры"),
+        ("event_user_state, event_feedback_list", "Событие, комментарии, отзывы"),
+        ("my_event_lists", "Список"),
+        ("suggest_people, taste_similarity, comments_feed", "Соцсеть"),
+        ("going_people", "Желающие"),
+        ("public_profile, profile_events", "Профиль участника"),
+        ("requests_detail, cancel_request", "Приглашения"),
+        ("chat_list, mark_chat_read", "Чаты"),
+        ("notifications_detail, mark_notification_read, mark_all_notifications_read", "Уведомления"),
+        ("moderation_queue, import_history", "Модерация"),
+    ],
+    [10.5, 5.5],
+)
+para("Индекс ix_feedback_recent ускоряет ленту обсуждений: она читает последние видимые записи event_feedback.")
+master.add_picture(os.path.join(ROOT, "docs", "architecture.png"), width=Cm(16))
+master.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+caption("Диаграмма классов с уровнем представления")
+
+master.add_heading("4.8 Тестирование", level=2)
+table(
+    ["Уровень", "Объём", "Что проверяет"],
+    [
+        ("SQL (05_tests.sql)", "Проверки целостности", "Триггеры и ограничения этапа 2"),
+        ("Сервисы (JUnit)", "14 тестов", "Бизнес-логика этапа 3 на реальной БД"),
+        ("API (JUnit, MockMvc)", "21 тест", "Доступ, приватность, заявка и чат, отзыв, импорт, модерация"),
+        ("Браузер (Playwright)", "16 сценариев", "Основные процессы, включая чат двух пользователей"),
+    ],
+    [4.5, 3.5, 8],
+)
+para(
+    "Браузерные тесты также проверяют, что HTML в комментарии и сообщении не исполняется, что блокировка действует сразу "
+    "и что на 14 экранах при ширине 360 и 1280 пикселей нет горизонтальной прокрутки. "
+    "Все перечисленные тесты проходили локально на момент подготовки отчёта. "
+    "Отдельный тест SkhodimDatabaseTest перезаливает схему на helios, поэтому из обычного запуска он исключён и запускается только явно."
+)
+
+master.add_heading("4.9 Развёртывание и CI/CD", level=2)
+para("Выкладка устроена так, чтобы не затронуть остальное содержимое личной схемы и домашней папки на helios:")
+for text in (
+    "приложение живёт в отдельной папке ~/skhodim, новая версия кладётся в releases/<время>;",
+    "останавливается только свой процесс по pid-файлу, новая версия проверяется запросом к /api/v1/health;",
+    "если проверка не прошла, автоматически запускается предыдущая версия; этот откат проверен локально на повреждённом JAR;",
+    "deploy/db.sh reset пересоздаёт только 22 таблицы проекта и перед этим сохраняет их копию; 90_drop_schema.sql не используется;",
+    "секрет подписи токенов создаётся на сервере и в репозиторий не попадает.",
+):
+    bullet(text)
+para(
+    "В GitHub Actions при каждом изменении поднимается PostgreSQL, собирается JAR, выполняются тесты backend и браузерные тесты. "
+    "Выкладка на helios выполняется из ветки main или вручную, после успешных тестов, по отдельному ключу из секретов репозитория."
+)
+
+master.add_heading("4.10 Заключение", level=2)
+para(
+    "Реализовано полноценное приложение «Сходим»: все функциональные требования этапа 1 доступны через интерфейс, "
+    "уровни системы связаны, запросы выполняются функциями БД, а основные сценарии покрыты автотестами. "
+    "Открытым остаётся источник реальных событий: прямой доступ к KudaGo сейчас закрыт, поэтому каталог заполняется выгрузкой, "
+    "а для автоматического обновления потребуется доступ к KudaGo или токен Timepad."
+)
+
+composer.save(OUT)
+print("Готово:", OUT)

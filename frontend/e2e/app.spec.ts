@@ -160,6 +160,14 @@ test('поиск и фильтры: текст, бесплатные, пусто
     expect(text).toContain('Бесплатно');
   }
 
+  // Свои даты: диапазон в прошлом не должен ничего находить.
+  await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
+  await page.getByRole('button', { name: 'Выбрать даты' }).click();
+  await page.getByLabel('С', { exact: true }).fill('2020-01-01');
+  await page.getByLabel('По', { exact: true }).fill('2020-01-02');
+  await page.getByRole('button', { name: 'Применить фильтры' }).click();
+  await expect(page.getByRole('heading', { name: 'Пока ничего не нашлось' })).toBeVisible();
+
   await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
   await page.getByRole('button', { name: 'Сбросить всё' }).click();
   await expect(page.locator('.event-row-price', { hasText: '₽' }).first()).toBeVisible();

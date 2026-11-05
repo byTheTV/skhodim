@@ -9,6 +9,8 @@ const channel = process.env.CI ? undefined : 'chrome';
 
 export default defineConfig({
   testDir: './e2e',
+  // Скриншоты для отчёта снимаются отдельно: npm run screens
+  testIgnore: process.env.SCREENS ? ['**/app.spec.ts'] : ['**/screens.spec.ts'],
   workers: 1,
   fullyParallel: false,
   retries: 0,

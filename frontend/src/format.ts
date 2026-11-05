@@ -88,6 +88,18 @@ export function whenRange(key: WhenKey): { from?: string; to?: string } {
   return {};
 }
 
+/** Свои даты из фильтра: границы дня считаются по Петербургу, «по» включает весь день. */
+export function customRange(from: string | null, to: string | null): { from?: string; to?: string } {
+  const range: { from?: string; to?: string } = {};
+  if (from) range.from = new Date(`${from}T00:00:00+03:00`).toISOString();
+  if (to) {
+    const end = new Date(`${to}T00:00:00+03:00`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    range.to = end.toISOString();
+  }
+  return range;
+}
+
 export function weekendLabel(): string {
   const { from, to } = whenRange('weekend');
   if (!from || !to) return '';

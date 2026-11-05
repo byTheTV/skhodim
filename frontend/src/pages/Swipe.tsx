@@ -195,7 +195,7 @@ export function Swipe() {
 
       {count > 0 && (
         <div className="chips chips-row">
-          {filters.when !== 'any' && <Chip tone="violet">{whenTitle(filters.when)}</Chip>}
+          {filters.when !== 'any' && <Chip tone="violet">{whenTitle(filters)}</Chip>}
           {filters.categoryIds.length > 0 && <Chip tone="violet">Категорий: {filters.categoryIds.length}</Chip>}
           {filters.isFree && <Chip tone="violet">Бесплатно</Chip>}
           {filters.metro && <Chip tone="violet">м. {filters.metro}</Chip>}

@@ -45,7 +45,7 @@ export function Search() {
       </div>
 
       <div className="chips chips-row">
-        <Chip active={filters.when === 'any'} onClick={() => setOpen(true)}>{whenTitle(filters.when)}</Chip>
+        <Chip active={filters.when === 'any'} onClick={() => setOpen(true)}>{whenTitle(filters)}</Chip>
         <Chip active={filters.categoryIds.length > 0} onClick={() => setOpen(true)}>
           {filters.categoryIds.length ? `Категорий: ${filters.categoryIds.length}` : 'Все категории'}
         </Chip>

@@ -1,173 +1,163 @@
-# ИС «Сходим» — курсовая работа
+# ИС «Сходим»
 
-Этапы 1–2 (предметная область, прецеденты, ER-модель, БД PostgreSQL) — в
-`sql/` и отчёте этапа 2. Этап 3: уровень хранения и бизнес-логики (Spring Boot,
-JdbcTemplate поверх pl/pgsql). REST `/api/v1` и Swagger — для проверки на helios.
-Отчёт этапа 3: `docs/generate_report.py` → `Skhodim_Etap_3_Report.docx`.
+Афиша Петербурга и компания на вечер: смахивай события, отмечай, куда хочешь пойти, находи тех, кто идёт туда же, и договаривайся в чате. Курсовая работа по дисциплине «Информационные системы», ИТМО.
 
-## Структура
+Итоговый отчёт: `Skhodim_Final_Report.docx`, собирается скриптом `docs/generate_final_report.py`.
 
-- `sql/` — схема БД, pl/pgsql-функции/процедуры, индексы, сиды.
-- `src/main/java/ru/ifmo/skhodim/domain` — доменные record-классы.
-- `src/main/java/ru/ifmo/skhodim/repository` — уровень хранения: JdbcTemplate + функции БД.
-- `src/main/java/ru/ifmo/skhodim/service` — бизнес-логика.
-- `src/main/java/ru/ifmo/skhodim/web` — REST `/api/v1` и Swagger.
-- `docs/architecture.puml` — диаграмма классов общей архитектуры.
+## Состав
 
-Демо-учётки после посева `04_seed.sql`:
+| Папка | Что внутри |
+|-------|------------|
+| `frontend/` | React, TypeScript, Vite; браузерные тесты в `frontend/e2e` |
+| `src/main/java/.../web` | REST `/api/v1`, Swagger, отдача собранного React |
+| `src/main/java/.../service` | Бизнес-логика |
+| `src/main/java/.../repository` | Уровень хранения: JdbcTemplate поверх функций pl/pgsql |
+| `sql/` | Схема, триггеры, функции, индексы, данные |
+| `deploy/` | Выкладка на helios с откатом и работа с БД |
+| `.github/workflows/` | CI/CD |
+| `docs/` | Диаграмма классов, скриншоты, генераторы отчётов |
 
-| Роль | Email | Пароль |
-|------|-------|--------|
-| Пользователь | `demo1@example.org` | `Demo12345!` |
-| Модератор | `demo100@example.org` | `Demo12345!` |
+## Запуск локально
 
----
-
-## Запуск на helios (основной сценарий)
-
-Приложение должно работать **на helios**: JDBC ходит на хост `pg`, с вашего ПК он
-недоступен. HTTP слушает только `127.0.0.1:18080` (порт 8080 занят GlassFish).
-Снаружи заходим SSH-туннелем.
-
-### Что умирает, когда закрываешь терминал
-
-Два разных процесса:
-
-| Что | Где живёт | Закрыл терминал |
-|-----|-----------|-----------------|
-| `java -jar skhodim.jar` | helios, `nohup` | **не умирает** (пока helios не прибьёт процесс) |
-| SSH-туннель `-L 18080` | твой ПК | **умирает**. Swagger на localhost пропадёт |
-
-Поэтому почти всегда достаточно заново открыть туннель. JAR пересобирать и
-SQL заливать не нужно.
-
-### Каждый раз, когда закрыл терминал / перезагрузил ноут
-
-**1. Проверь, жив ли JAR** (можно в любом ssh-окне, его потом закрыть):
+Нужны Java 17+, PostgreSQL и Maven. Node.js ставить не обязательно: Maven скачает его сам.
 
 ```bash
-ssh -p 2222 s467667@helios.se.ifmo.ru
-curl -sS http://127.0.0.1:18080/api/v1/health
-# ожидается: {"status":"ok","schema":"s467667"}
-pgrep -af skhodim.jar
+psql -d postgres -v db_name=skhodim_course -f sql/00_create_database.sql
 ```
-
-Если health отвечает — Java не трогай, только туннель (шаг 2).
-
-Если `Connection refused` / пустой `pgrep` — перезапусти JAR:
 
 ```bash
-cd ~/skhodim-etap2
-pkill -f skhodim.jar || true
-export SKHODIM_SCHEMA=s467667
-export SKHODIM_DB_PASSWORD=$(awk -F: '{print $5; exit}' ~/.pgpass)
-# без -Xmx256m JVM на helios падает (пытается выделить десятки ГБ)
-nohup java -Xms64m -Xmx256m -Djava.awt.headless=true \
-  -jar skhodim.jar --spring.profiles.active=helios --server.port=18080 \
-  > skhodim.log 2>&1 &
-sleep 8
-tail -n 20 skhodim.log
-# нужна строка: Started SkhodimApplication
-curl -sS http://127.0.0.1:18080/api/v1/health
+for f in 01_schema 02_logic 03_queries_indexes 08_stage4 09_base_data; do psql -d skhodim_course -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql; done
 ```
 
-Остановка: `pkill -f skhodim.jar`. Лог: `~/skhodim-etap2/skhodim.log`.
+```bash
+mvn -DskipTests package
+```
 
-**2. Туннель на своём ПК** — отдельный терминал, **не закрывать**, пока смотришь Swagger:
+```bash
+SKHODIM_DB_PASSWORD=postgres java -jar target/skhodim.jar --spring.profiles.active=local
+```
+
+Приложение откроется на <http://localhost:8080>, Swagger на <http://localhost:8080/swagger-ui.html>.
+
+Для разработки интерфейса с мгновенным обновлением страницы запустите сервер как выше и затем:
+
+```bash
+npm run dev --prefix frontend
+```
+
+### Демо-учётки
+
+Создаются скриптом `09_base_data.sql`. Люди вымышленные, пароль у всех `Demo12345!`.
+
+| Роль | Email |
+|------|-------|
+| Участник | `demo1@example.org` … `demo9@example.org` |
+| Модератор | `demo100@example.org` |
+
+## Откуда берутся события
+
+В рабочей базе нет выдуманных событий: каталог заполняется только импортом.
+
+- **KudaGo API:** кнопка в разделе «Модерация → Импорт афиши». Сейчас KudaGo отвечает 403 и с домашнего компьютера, и с helios, причина неизвестна. Импорт честно показывает сбой и не трогает каталог.
+- **Выгрузка KudaGo:** JSON-ответ `GET /events/` можно загрузить файлом там же. Повторная загрузка обновляет события без дублей.
+- **Timepad:** требует токен, пока не подключён.
+
+После появления событий можно оживить демо-учётки: лайки, планы, заявки и чат.
+
+```bash
+psql -d skhodim_course -v app_schema=skhodim -f sql/10_demo_activity.sql
+```
+
+## Тесты
+
+Сервисы и API работают на отдельной базе `skhodim_test`, она создаётся один раз:
+
+```bash
+psql -d postgres -c "CREATE DATABASE skhodim_test ENCODING 'UTF8' TEMPLATE template0"
+```
+
+```bash
+for f in 01_schema 02_logic 03_queries_indexes 04_seed 08_stage4; do psql -d skhodim_test -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql; done
+```
+
+```bash
+mvn test -Dskip.frontend=true
+```
+
+Браузерные тесты сами готовят базу `skhodim_e2e` и запускают приложение из собранного JAR:
+
+```bash
+npm run e2e --prefix frontend
+```
+
+`SkhodimDatabaseTest` **перезаливает схему на helios**, поэтому из обычного запуска исключён. Запускать только осознанно: `mvn test -Dtest=SkhodimDatabaseTest`.
+
+## Выкладка на helios
+
+Приложение живёт в отдельной папке `~/skhodim`, остальное содержимое домашней папки и личной схемы скрипты не трогают. `sql/90_drop_schema.sql` на helios не запускать: он удалит всю личную схему.
+
+Один раз настройте вход по ключу. Домашняя папка не должна быть доступна на запись другим, иначе SSH не примет ключ:
+
+```bash
+ssh -p 2222 s467667@helios.se.ifmo.ru 'chmod go-w ~'
+```
+
+Обычная выкладка: сборка, загрузка, миграция, перезапуск, проверка здоровья и автоматический откат при сбое.
+
+```bash
+bash deploy/deploy.sh
+```
+
+Команды работы с БД на сервере. Они выполняются из `~/skhodim/incoming`, куда `deploy.sh` кладёт скрипты:
+
+```bash
+cd ~/skhodim/incoming
+```
+
+```bash
+bash deploy/db.sh check
+```
+
+```bash
+bash deploy/db.sh backup
+```
+
+```bash
+bash deploy/db.sh reset
+```
+
+`check` показывает таблицы проекта и остальные таблицы схемы. `reset` пересоздаёт только таблицы проекта: перед этим покажет список, спросит подтверждение и сохранит копию в `~/skhodim/backups`.
+
+HTTP на helios слушает только `127.0.0.1:18080`, поэтому снаружи нужен SSH-туннель. Окно с ним держите открытым:
 
 ```bash
 ssh -L 18080:127.0.0.1:18080 -p 2222 s467667@helios.se.ifmo.ru
 ```
 
-Сессия должна остаться открытой (просто висит). Если окно закрылось — туннель
-умер, команду повторить. В браузере:
+После этого приложение открывается на <http://localhost:18080>. Журнал: `~/skhodim/shared/app.log`.
 
-1. Жив ли сервис: <http://localhost:18080/api/v1/health>
-2. Swagger UI: <http://localhost:18080/swagger-ui.html>
-3. `POST /api/v1/auth/login` — тело уже заполнено: `demo1@example.org` / `Demo12345!`
-4. **Authorize** → вставить `token` из ответа (без слова Bearer)
-5. Дальше любые методы. Гость без токена: health, поиск, карточка события.
-   Админка — логин `demo100@example.org`.
+### CI/CD
 
-Готовые id в шапке Swagger: события `1` и `10`, сеансы `19`/`20`, диалог `1`.
+`.github/workflows/ci.yml` при каждом изменении собирает проект и запускает все тесты. Выкладка идёт из `main` или вручную (Actions → CI/CD → Run workflow → deploy). Для неё в настройках репозитория нужны:
 
-Если `localhost:18080` не открывается, а на helios `curl` к health работает —
-проблема только в туннеле (закрыт, занят порт, опечатка в `-L`).
+| Что | Где | Значение |
+|-----|-----|----------|
+| `HELIOS_SSH_KEY` | Secrets окружения `helios` | Приватная часть отдельного ключа только для выкладки |
+| `HELIOS_KNOWN_HOSTS` | Secrets окружения `helios` | Вывод `ssh-keyscan -p 2222 helios.se.ifmo.ru`, сверенный с отпечатком |
+| `HELIOS_USER` | Variables окружения `helios` | `s467667` |
 
-### 1. База в личной схеме (один раз)
+Выкладка из GitHub не проверялась: неизвестно, пропустит ли helios подключение из сети GitHub. Если нет, запускайте `deploy/deploy.sh` со своего компьютера.
 
-На helios **не** создают отдельную БД и **не** запускают `sql/90_drop_schema.sql`
-(снесёт всю личную схему). Нужны скрипты в `~/skhodim-etap2/sql/`.
+## Отчёты
 
 ```bash
-ssh -p 2222 s467667@helios.se.ifmo.ru
-cd ~/skhodim-etap2
-export PGCLIENTENCODING=UTF8
-APP_SCHEMA=s467667
-
-# полный пересоздать объекты проекта (чужие таблицы схемы не трогает):
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/91_reset_objects.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/01_schema.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/02_logic.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/03_queries_indexes.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/04_seed.sql
-
-psql -h pg -d studs -c "SET search_path TO s467667, public; SELECT count(*) FROM app_user;"
-# ожидается 100
+pip install python-docx docxcompose
 ```
-
-Если схема уже залита, достаточно проверки `count(*)`. Для накатки только новых
-функций/колонок: `sql/07_migrate_etap1_api.sql`, затем снова `03_queries_indexes.sql`.
-
-### 2. Сборка JAR (на своём ПК)
 
 ```bash
-mvn -DskipTests package
-# артефакт: target/skhodim.jar
-scp -P 2222 target/skhodim.jar s467667@helios.se.ifmo.ru:~/skhodim-etap2/
+npm run screens --prefix frontend
 ```
-
-### 3. Старт JAR на helios (если health молчит)
-
-См. блок «Каждый раз, когда закрыл терминал» выше. Коротко: `pkill` → `nohup java -Xmx256m … &`.
-
-Коллекция Postman: `docs/postman/Skhodim-Helios.postman_collection.json`.
-
----
-
-## Запуск локально
-
-Нужна отдельная БД `skhodim_course` (см. `sql/README.md`):
 
 ```bash
-psql -d postgres -v db_name=skhodim_course -f sql/00_create_database.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/01_schema.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/02_logic.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/03_queries_indexes.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/04_seed.sql
-
-export SKHODIM_DB_PASSWORD=postgres
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+python docs/generate_final_report.py
 ```
-
-Локально порт **8080**: <http://localhost:8080/swagger-ui.html>.
-
-Тесты:
-
-```bash
-mvn test -Dtest=SkhodimServiceIntegrationTest   # локальная БД
-mvn test -Dtest=SkhodimDatabaseTest            # helios по SSH, нужен helios.local.properties
-```
-
-`src/test/resources/helios.local.properties` в git не коммитится.
-
----
-
-## Генерация отчёта этапа 3
-
-```
-docs/generate_report.py   # pip install python-docx
-```
-
-Результат — `Skhodim_Etap_3_Report.docx`. Подробности по БД на helios:
-[docs/HELIOS_STAGE3.md](docs/HELIOS_STAGE3.md).
