@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import ru.ifmo.skhodim.domain.ImportRun;
 import ru.ifmo.skhodim.exception.BusinessRuleException;
@@ -25,10 +24,13 @@ import java.time.ZoneOffset;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * UC-12: импорт KudaGo location=spb с upsert по (source, external_id).
- * Если исходящий HTTPS недоступен, берётся classpath-фикстура.
+ * Сбой источника виден модератору и не трогает каталог (NFR-6): подмены данных нет.
+ * Если сервер не может достучаться до API, события загружаются выгрузкой (importSnapshot).
  */
 @Service
 public class ImportService {
@@ -46,8 +48,15 @@ public class ImportService {
             Map.entry("festival", "festival"),
             Map.entry("cinema", "cinema"),
             Map.entry("recreation", "workshop"),
-            Map.entry("entertainment", "workshop")
+            Map.entry("entertainment", "workshop"),
+            Map.entry("party", "party"),
+            Map.entry("stand-up", "standup"),
+            Map.entry("tour", "walk"),
+            Map.entry("kids", "kids")
     );
+    /** KudaGo помечает бессрочные даты значениями вроде 9999 года. */
+    private static final long LAST_SANE_EPOCH = OffsetDateTime.of(2100, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toEpochSecond();
+    private static final Pattern PRICE_NUMBER = Pattern.compile("(\\d[\\d\\s]*)");
 
     private final ImportRepository repository;
     private final CatalogRepository catalogRepository;
@@ -91,83 +100,96 @@ public class ImportService {
     }
 
     public Map<String, Object> syncKudago() {
-        long sourceId = catalogRepository.findSourceIdByCode("kudago")
-                .orElseThrow(() -> new BusinessRuleException("catalog_source kudago is missing"));
+        long sourceId = kudagoSourceId();
         long runId = startRun(sourceId);
-        int processed = 0;
-        int errors = 0;
-        String origin = "kudago";
+        JsonNode results;
         try {
-            JsonNode results = fetchResults();
-            if (results == null || !results.isArray()) {
-                throw new IllegalStateException("Empty KudaGo payload");
-            }
-            origin = results.isArray() && results.size() > 0 && results.get(0).path("_fixture").asBoolean(false)
-                    ? "fixture"
-                    : origin;
-            for (JsonNode event : results) {
-                try {
-                    upsertEvent(sourceId, event);
-                    processed++;
-                } catch (Exception e) {
-                    errors++;
-                    repository.logError(runId, text(event, "id"), "UPSERT", String.valueOf(e.getMessage()));
-                }
-            }
-            String status = errors == 0 ? ImportRun.SUCCESS : (processed == 0 ? ImportRun.FAILED : ImportRun.PARTIAL);
-            finish(runId, status, processed, errors);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("runId", runId);
-            body.put("status", status);
-            body.put("processed", processed);
-            body.put("errors", errors);
-            body.put("origin", origin);
-            return body;
+            results = fetchResults();
         } catch (Exception e) {
             log.warn("KudaGo sync failed: {}", e.getMessage());
             repository.logError(runId, null, "SYNC", String.valueOf(e.getMessage()));
-            finish(runId, ImportRun.FAILED, processed, errors + 1);
+            finish(runId, ImportRun.FAILED, 0, 1);
             throw new BusinessRuleException("KudaGo sync failed: " + e.getMessage(), e);
         }
+        return upsertAll(runId, sourceId, results, "kudago");
+    }
+
+    /** Загрузка готовой выгрузки: объект с полем results или массив событий в формате KudaGo. */
+    public Map<String, Object> importSnapshot(String json) {
+        JsonNode results;
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            results = root != null && root.isArray() ? root : root == null ? null : root.path("results");
+        } catch (Exception e) {
+            throw new BusinessRuleException("Snapshot is not valid JSON", e);
+        }
+        if (results == null || !results.isArray() || results.isEmpty()) {
+            throw new BusinessRuleException("Snapshot has no events");
+        }
+        long sourceId = kudagoSourceId();
+        return upsertAll(startRun(sourceId), sourceId, results, "snapshot");
+    }
+
+    private long kudagoSourceId() {
+        return catalogRepository.findSourceIdByCode("kudago")
+                .orElseThrow(() -> new BusinessRuleException("catalog_source kudago is missing"));
+    }
+
+    private Map<String, Object> upsertAll(long runId, long sourceId, JsonNode results, String origin) {
+        int processed = 0;
+        int errors = 0;
+        for (JsonNode event : results) {
+            try {
+                upsertEvent(sourceId, event);
+                processed++;
+            } catch (Exception e) {
+                errors++;
+                log.warn("Event {} was not imported: {}", text(event, "id"), e.getMessage());
+                repository.logError(runId, text(event, "id"), "UPSERT", String.valueOf(e.getMessage()));
+            }
+        }
+        String status = errors == 0 ? ImportRun.SUCCESS : (processed == 0 ? ImportRun.FAILED : ImportRun.PARTIAL);
+        finish(runId, status, processed, errors);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("runId", runId);
+        body.put("status", status);
+        body.put("processed", processed);
+        body.put("errors", errors);
+        body.put("origin", origin);
+        return body;
     }
 
     private JsonNode fetchResults() throws Exception {
-        try {
-            com.fasterxml.jackson.databind.node.ArrayNode collected = objectMapper.createArrayNode();
-            long actualSince = Instant.now().minus(Duration.ofDays(1)).getEpochSecond();
-            String next = baseUrl + "/events/?location=" + location
-                    + "&page_size=" + pageSize
-                    + "&actual_since=" + actualSince
-                    + "&expand=place"
-                    + "&fields=id,title,description,body_text,dates,place,categories,tags,price,is_free,age_restriction,images,site_url";
-            for (int page = 0; page < maxPages && next != null; page++) {
-                HttpRequest request = HttpRequest.newBuilder(URI.create(next))
-                        .timeout(Duration.ofSeconds(12))
-                        .header("Accept", "application/json")
-                        .header("User-Agent", "skhodim-course/1.0")
-                        .GET()
-                        .build();
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-                if (response.statusCode() >= 400) {
-                    throw new IllegalStateException("HTTP " + response.statusCode());
-                }
-                JsonNode root = objectMapper.readTree(response.body());
-                JsonNode results = root.path("results");
-                if (results.isArray()) {
-                    collected.addAll((com.fasterxml.jackson.databind.node.ArrayNode) results);
-                }
-                JsonNode nextNode = root.get("next");
-                next = nextNode == null || nextNode.isNull() ? null : nextNode.asText();
+        com.fasterxml.jackson.databind.node.ArrayNode collected = objectMapper.createArrayNode();
+        long actualSince = Instant.now().minus(Duration.ofDays(1)).getEpochSecond();
+        String next = baseUrl + "/events/?location=" + location
+                + "&page_size=" + pageSize
+                + "&actual_since=" + actualSince
+                + "&expand=place"
+                + "&fields=id,title,description,body_text,dates,place,categories,tags,price,is_free,age_restriction,images,site_url";
+        for (int page = 0; page < maxPages && next != null; page++) {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(next))
+                    .timeout(Duration.ofSeconds(12))
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "skhodim-course/1.0")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() >= 400) {
+                throw new IllegalStateException("KudaGo returned HTTP " + response.statusCode());
             }
-            if (!collected.isEmpty()) {
-                return collected;
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode results = root.path("results");
+            if (results.isArray()) {
+                collected.addAll((com.fasterxml.jackson.databind.node.ArrayNode) results);
             }
-        } catch (Exception e) {
-            log.info("KudaGo HTTP unavailable, using fixture: {}", e.getMessage());
+            JsonNode nextNode = root.get("next");
+            next = nextNode == null || nextNode.isNull() ? null : nextNode.asText();
         }
-        try (var in = new ClassPathResource("kudago/spb-sample.json").getInputStream()) {
-            return objectMapper.readTree(in).path("results");
+        if (collected.isEmpty()) {
+            throw new IllegalStateException("KudaGo returned no events");
         }
+        return collected;
     }
 
     private void upsertEvent(long sourceId, JsonNode event) {
@@ -207,7 +229,7 @@ public class ImportService {
                 description,
                 parseAge(text(event, "age_restriction")),
                 event.path("is_free").isBoolean() ? event.path("is_free").asBoolean() : null,
-                null,
+                parsePrice(text(event, "price")),
                 text(event, "price"),
                 cover,
                 siteUrl,
@@ -219,11 +241,11 @@ public class ImportService {
             for (JsonNode date : dates) {
                 long start = date.path("start").asLong(0);
                 long end = date.path("end").asLong(0);
-                if (start <= 0) {
+                if (start <= 0 || start > LAST_SANE_EPOCH) {
                     continue;
                 }
                 OffsetDateTime starts = OffsetDateTime.ofInstant(Instant.ofEpochSecond(start), ZoneOffset.UTC);
-                OffsetDateTime ends = end > start
+                OffsetDateTime ends = end > start && end <= LAST_SANE_EPOCH
                         ? OffsetDateTime.ofInstant(Instant.ofEpochSecond(end), ZoneOffset.UTC)
                         : starts.plusHours(2);
                 repository.upsertSession(eventId, "kudago-" + event.path("id").asText() + "-" + i, starts, ends);
@@ -301,6 +323,22 @@ public class ImportService {
         }
         int age = Integer.parseInt(digits);
         return age > 21 ? 21 : age;
+    }
+
+    /** Первое число в строке цены: «от 450 до 900 рублей» даёт 450. */
+    private static BigDecimal parsePrice(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        Matcher matcher = PRICE_NUMBER.matcher(raw);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(matcher.group(1).replaceAll("\\s", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String stripHtml(String raw) {

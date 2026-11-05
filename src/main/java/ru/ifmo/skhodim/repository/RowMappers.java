@@ -54,7 +54,10 @@ final class RowMappers {
                 rs.getLong("user_id"),
                 rs.getString("nickname"),
                 rs.getString("avatar_key"),
-                rs.getString("metro")
+                rs.getString("metro"),
+                rs.getString("display_name"),
+                rs.getString("bio"),
+                rs.getBoolean("notifications_enabled")
         );
     }
 

@@ -6,10 +6,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import ru.ifmo.skhodim.domain.*;
+import ru.ifmo.skhodim.domain.Views.*;
 import ru.ifmo.skhodim.security.AuthFacade;
 import ru.ifmo.skhodim.service.CatalogService;
 import ru.ifmo.skhodim.service.CompanionService;
 import ru.ifmo.skhodim.service.ModerationService;
+import ru.ifmo.skhodim.service.PresentationService;
 import ru.ifmo.skhodim.service.ReactionService;
 import ru.ifmo.skhodim.service.UserService;
 
@@ -27,6 +29,8 @@ public class MeController {
     private final ReactionService reactionService;
     private final CompanionService companionService;
     private final ModerationService moderationService;
+    private final PresentationService presentation;
+    private final ru.ifmo.skhodim.repository.CatalogRepository catalogRepository;
 
     public MeController(
             AuthFacade auth,
@@ -34,7 +38,9 @@ public class MeController {
             CatalogService catalogService,
             ReactionService reactionService,
             CompanionService companionService,
-            ModerationService moderationService
+            ModerationService moderationService,
+            PresentationService presentation,
+            ru.ifmo.skhodim.repository.CatalogRepository catalogRepository
     ) {
         this.auth = auth;
         this.userService = userService;
@@ -42,18 +48,26 @@ public class MeController {
         this.reactionService = reactionService;
         this.companionService = companionService;
         this.moderationService = moderationService;
+        this.presentation = presentation;
+        this.catalogRepository = catalogRepository;
     }
 
     @GetMapping("/profile")
     @Operation(summary = "Текущий профиль", description = "Нужен JWT. Ник, метро, 3–5 интересов.")
     public Map<String, Object> profile() {
         long userId = auth.require().id();
+        AppUser user = userService.getUser(userId);
+        List<Long> interests = userService.getInterests(userId);
+        List<Category> categories = catalogRepository.findAllCategories().stream()
+                .filter(c -> interests.contains(c.id()))
+                .toList();
         return Map.of(
                 "userId", userId,
-                "email", userService.getUser(userId).email(),
-                "role", userService.getUser(userId).role(),
+                "email", user.email(),
+                "role", user.role(),
                 "profile", userService.getProfile(userId),
-                "interests", userService.getInterests(userId)
+                "interests", interests,
+                "interestCategories", categories
         );
     }
 
@@ -64,7 +78,16 @@ public class MeController {
     )
     public Map<String, Object> update(@RequestBody ProfileBody body) {
         long userId = auth.require().id();
-        userService.updateProfile(userId, body.nickname(), body.avatarKey(), body.metro(), body.categoryIds());
+        UserProfile current = userService.getProfile(userId);
+        userService.updateProfile(
+                userId,
+                body.nickname(),
+                body.avatarKey(),
+                body.metro(),
+                body.displayName(),
+                body.bio(),
+                body.notificationsEnabled() == null ? current.notificationsEnabled() : body.notificationsEnabled(),
+                body.categoryIds());
         return profile();
     }
 
@@ -103,10 +126,10 @@ public class MeController {
 
     @GetMapping("/notifications")
     @Operation(summary = "Уведомления", description = "Виды: REQUEST, ACCEPTED, REJECTED, MESSAGE. id из ответа нужен для PUT read.")
-    public List<Notification> notifications(
+    public List<NotificationView> notifications(
             @Parameter(description = "Только непрочитанные") @RequestParam(defaultValue = "false") boolean unreadOnly
     ) {
-        return companionService.notifications(auth.require().id(), unreadOnly);
+        return presentation.notifications(auth.require().id(), unreadOnly);
     }
 
     @PutMapping("/notifications/{notificationId}")
@@ -114,8 +137,14 @@ public class MeController {
     public Map<String, String> read(
             @Parameter(description = "id уведомления", example = "1") @PathVariable long notificationId
     ) {
-        companionService.markRead(notificationId);
+        presentation.markNotificationRead(auth.require().id(), notificationId);
         return Map.of("status", "ok");
+    }
+
+    @PostMapping("/notifications/read-all")
+    @Operation(summary = "Прочитать все уведомления")
+    public Map<String, Integer> readAll() {
+        return Map.of("changed", presentation.markAllNotificationsRead(auth.require().id()));
     }
 
     @PostMapping("/reports")
@@ -136,7 +165,13 @@ public class MeController {
             String avatarKey,
             @Schema(description = "Любимое метро", example = "Невский проспект", nullable = true) String metro,
             @Schema(description = "Ровно 3–5 id; если null — интересы не меняются", example = "[1, 3, 5]", nullable = true)
-            List<Long> categoryIds
+            List<Long> categoryIds,
+            @Schema(description = "Отображаемое имя, до 60 символов", example = "Никита", nullable = true)
+            String displayName,
+            @Schema(description = "Короткая подпись, до 160 символов", example = "Ищу компанию на кино", nullable = true)
+            String bio,
+            @Schema(description = "Показывать уведомления в интерфейсе", example = "true", nullable = true)
+            Boolean notificationsEnabled
     ) {}
 
     @Schema(name = "ReportRequest", requiredProperties = {"targetType", "targetId", "reason"})

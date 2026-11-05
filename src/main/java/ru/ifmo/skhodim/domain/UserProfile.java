@@ -5,6 +5,9 @@ public record UserProfile(
         Long userId,
         String nickname,
         String avatarKey,
-        String metro
+        String metro,
+        String displayName,
+        String bio,
+        boolean notificationsEnabled
 ) {
 }

@@ -42,9 +42,9 @@ public class ShareCardService {
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setColor(new Color(28, 18, 52));
+        g.setColor(new Color(24, 16, 58));
         g.fillRect(0, 0, WIDTH, HEIGHT);
-        g.setColor(new Color(122, 74, 212));
+        g.setColor(new Color(255, 90, 54));
         g.fillRect(0, 0, WIDTH, 18);
 
         int y = 90;
@@ -69,7 +69,7 @@ public class ShareCardService {
         y = drawWrapped(g, venue, 40, y, WIDTH - 80, 32);
 
         y += 60;
-        g.setColor(new Color(255, 214, 90));
+        g.setColor(new Color(198, 241, 53));
         g.setFont(new Font("SansSerif", Font.BOLD, 32));
         String nick = profile.nickname() == null ? "я" : profile.nickname();
         y = drawWrapped(g, nick + " идёт. Кто с нами?", 40, y, WIDTH - 80, 40);

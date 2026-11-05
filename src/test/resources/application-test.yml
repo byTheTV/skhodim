@@ -1,8 +1,8 @@
 # Конфигурация для интеграционных тестов уровня хранения/бизнес-логики (Этап 3).
-# Использует ту же локальную БД skhodim_course, что поднимается sql/README.md.
+# Отдельная БД skhodim_test с синтетическим посевом 04_seed.sql, рабочая БД не затрагивается.
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/skhodim_course?currentSchema=skhodim,public
+    url: jdbc:postgresql://localhost:5432/skhodim_test?currentSchema=skhodim,public
     username: postgres
     password: ${SKHODIM_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
