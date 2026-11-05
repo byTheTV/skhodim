@@ -8,9 +8,13 @@ const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-d
 export function eventDate(iso?: string | null, end?: string | null): string {
   if (!iso) return 'Дата уточняется';
   const start = new Date(iso);
+  const finish = end ? new Date(end) : null;
+  // Выставка началась в июле и идёт до декабря: дата начала здесь только запутает.
+  if (finish && start.getTime() <= Date.now() && finish.getTime() > Date.now()) {
+    return `Идёт до ${dayFmt.format(finish)}`;
+  }
   const base = `${dayFmt.format(start)}, ${weekdayFmt.format(start)} · ${timeFmt.format(start)}`;
-  if (!end) return base;
-  const finish = new Date(end);
+  if (!finish) return base;
   if (dayFmt.format(start) !== dayFmt.format(finish)) return base;
   return `${base}–${timeFmt.format(finish)}`;
 }

@@ -11,13 +11,13 @@ import {
 } from '../ui';
 
 /** Серая карточка контекста из макета: обложка 44×48 и три строки. */
-export function EventMini({ event }: { event: Pick<EventSummary, 'eventId' | 'title' | 'coverUrl' | 'categories' | 'startsAt' | 'placeName'> }) {
+export function EventMini({ event }: { event: Pick<EventSummary, 'eventId' | 'title' | 'coverUrl' | 'categories' | 'startsAt' | 'placeName'> & { endsAt?: string | null } }) {
   return (
     <Link to={`/events/${event.eventId}`} className="event-mini">
       <Cover event={event} className="event-mini-cover" />
       <div>
         <b>{event.title}</b>
-        <p>{eventDate(event.startsAt)}</p>
+        <p>{eventDate(event.startsAt, event.endsAt)}</p>
         {event.placeName && <p className="muted">{event.placeName}</p>}
       </div>
     </Link>
@@ -279,7 +279,7 @@ export function EventPage() {
         <div className="event-main">
           <EventTags event={event} limit={4} />
           {tags.length > 0 && <p className="tags-line">{tags.map((t) => `#${t.name}`).join(' ')}</p>}
-          {event.description && (
+          {event.description && event.description !== event.title && (
             <div className={`event-desc ${expanded || !longText ? '' : 'event-desc-clamp'}`}>
               <p>{event.description}</p>
             </div>
@@ -306,7 +306,7 @@ export function EventPage() {
             <label className="field">
               <span>Сеанс</span>
               <select value={session ?? ''} disabled={isGoing} onChange={(e) => setSessionChoice(Number(e.target.value))}>
-                {upcoming.map((s) => <option key={s.id} value={s.id}>{eventDate(s.startsAt)}</option>)}
+                {upcoming.map((s) => <option key={s.id} value={s.id}>{eventDate(s.startsAt, s.endsAt)}</option>)}
               </select>
             </label>
           )}

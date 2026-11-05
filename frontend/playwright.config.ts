@@ -27,7 +27,7 @@ export default defineConfig({
   },
   webServer: {
     command: `java -jar ../target/skhodim.jar --spring.profiles.active=local --server.port=${PORT} `
-      + `"--spring.datasource.url=${DB}" --app.kudago.base-url=http://127.0.0.1:1/unreachable`,
+      + `"--spring.datasource.url=${DB}" --app.kudago.base-url=http://127.0.0.1:1/unreachable --app.kassir.cron=-`,
     url: `http://localhost:${PORT}/api/v1/health`,
     reuseExistingServer: false,
     timeout: 60_000,

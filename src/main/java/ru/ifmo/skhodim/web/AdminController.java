@@ -55,6 +55,15 @@ public class AdminController {
         return importService.syncKudago();
     }
 
+    @PostMapping("/sync/kassir")
+    @Operation(
+            summary = "Обновить афишу с Кассир.ру",
+            description = "Читает разметку schema.org на страницах spb.kassir.ru. Занимает несколько минут: между запросами есть пауза."
+    )
+    public Map<String, Object> syncKassir() {
+        return importService.syncKassir();
+    }
+
     @PostMapping(value = "/sync/snapshot", consumes = "application/json")
     @Operation(
             summary = "Загрузить выгрузку KudaGo",

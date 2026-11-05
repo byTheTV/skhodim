@@ -32,9 +32,11 @@ package "Уровень бизнес-логики" as business {
   class FeedbackService
   class ModerationService
   class ImportService
+  class KassirSource <<component>>
   class PresentationService
   class ShareCardService
   class RequestExpirationScheduler <<component>>
+  class KassirRefreshScheduler <<component>>
   class BusinessRuleException
   class NotFoundException
 }
@@ -118,6 +120,8 @@ CompanionService --> CompanionRepository
 FeedbackService --> FeedbackRepository
 ModerationService --> ModerationRepository
 ImportService --> ImportRepository
+ImportService --> KassirSource : fetchEvents()
+KassirRefreshScheduler --> ImportService : syncKassir()
 PresentationService --> PresentationRepository
 RequestExpirationScheduler --> CompanionService : expireRequests()
 

@@ -86,6 +86,15 @@ function Imports() {
       client.invalidateQueries({ queryKey: ['imports'] });
     },
   });
+  const kassir = useMutation({
+    mutationFn: api.syncKassir,
+    onSuccess: done,
+    onError: (e: Error) => {
+      toast(e.message, 'error');
+      setResult(null);
+      client.invalidateQueries({ queryKey: ['imports'] });
+    },
+  });
   const upload = useMutation({
     mutationFn: api.uploadSnapshot,
     onSuccess: done,
@@ -104,10 +113,13 @@ function Imports() {
     <div className="stack">
       <div className="note">
         <b>Откуда берутся события</b>
-        <p>Реальная афиша из KudaGo: напрямую по API или из сохранённой выгрузки, если сервер не может достучаться до API. Повторная загрузка обновляет события и не создаёт дублей.</p>
+        <p>Настоящая афиша Петербурга с Кассир.ру: обновляется сама раз в сутки или по кнопке, это занимает несколько минут. KudaGo сейчас закрыт защитой от ботов, но его сохранённую выгрузку можно загрузить файлом. Повторная загрузка обновляет события и не создаёт дублей.</p>
       </div>
       <div className="stack-row">
-        <Button variant="primary" loading={sync.isPending} onClick={() => sync.mutate()}>
+        <Button variant="primary" loading={kassir.isPending} onClick={() => kassir.mutate()}>
+          <CloudDownload aria-hidden /> Обновить афишу с Кассир.ру
+        </Button>
+        <Button loading={sync.isPending} onClick={() => sync.mutate()}>
           <CloudDownload aria-hidden /> Синхронизировать с KudaGo
         </Button>
         <Button loading={upload.isPending} onClick={() => file.current?.click()}>
@@ -131,7 +143,7 @@ function Imports() {
             <div>
               <b>{run.status === 'SUCCESS' ? 'Успешно' : run.status === 'PARTIAL' ? 'Частично' : run.status === 'RUNNING' ? 'Идёт' : 'Сбой'}</b>
               <p className="muted small">
-                {relativeTime(run.startedAt)} · событий: {run.processedCount}, ошибок: {run.errorCount}
+                {run.sourceCode} · {relativeTime(run.startedAt)} · событий: {run.processedCount}, ошибок: {run.errorCount}
               </p>
               {run.lastError && <p className="muted small">{run.lastError}</p>}
             </div>

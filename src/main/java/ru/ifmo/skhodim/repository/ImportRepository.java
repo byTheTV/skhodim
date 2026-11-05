@@ -20,6 +20,23 @@ public class ImportRepository {
         this.jdbc = jdbc;
     }
 
+    /** Источник появляется при первом запуске импорта. Счётчик id после заливки данных может отставать, поэтому id задан явно. */
+    public void ensureSource(String code, String name, String baseUrl) {
+        jdbc.update(
+                "INSERT INTO catalog_source (id, code, name, base_url) "
+                        + "SELECT COALESCE(max(id), 0) + 1, ?, ?, ? FROM catalog_source "
+                        + "ON CONFLICT (code) DO NOTHING",
+                code, name, baseUrl);
+    }
+
+    public void ensureCategory(String slug, String name) {
+        jdbc.update(
+                "INSERT INTO category (id, slug, name) "
+                        + "SELECT COALESCE(max(id), 0) + 1, ?, ? FROM category "
+                        + "ON CONFLICT (slug) DO NOTHING",
+                slug, name);
+    }
+
     public long startRun(long sourceId) {
         return jdbc.queryForObject(
                 "INSERT INTO import_run (source_id, status, started_at) VALUES (?, 'RUNNING', now()) RETURNING id",

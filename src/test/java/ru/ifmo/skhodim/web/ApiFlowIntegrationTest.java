@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(
         classes = SkhodimApplication.class,
-        properties = "app.kudago.base-url=http://127.0.0.1:1/unreachable"
+        properties = {"app.kudago.base-url=http://127.0.0.1:1/unreachable", "app.kassir.base-url=http://127.0.0.1:1", "app.kassir.pause-ms=0"}
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -365,6 +365,17 @@ class ApiFlowIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Файл не похож на выгрузку событий KudaGo"));
     }
 
+    /** NFR-6: недоступная афиша Кассира показывается как сбой, каталог остаётся прежним. */
+    @Test
+    void unreachableKassirFailsVisiblyAndKeepsCatalog() throws Exception {
+        String moderator = login(100);
+        Integer before = jdbc.queryForObject("SELECT count(*) FROM event", Integer.class);
+        mvc.perform(auth(post("/api/v1/admin/sync/kassir"), moderator))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Не удалось получить афишу с Кассир.ру. Каталог не изменён"));
+        assertEquals(before, jdbc.queryForObject("SELECT count(*) FROM event", Integer.class));
+    }
+
     /** NFR-6: недоступный API честно показывается как сбой, каталог остаётся прежним. */
     @Test
     void unreachableSourceFailsVisiblyAndKeepsCatalog() throws Exception {
@@ -382,7 +393,7 @@ class ApiFlowIntegrationTest {
         String token = login(10);
         String body = mvc.perform(auth(post("/api/v1/companion-requests"), token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"receiverId\":11,\"sessionId\":" + upcomingSession(300) + "}"))
+                        .content("{\"receiverId\":11,\"sessionId\":" + upcomingSession(359) + "}"))
                 .andExpect(status().isBadRequest())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertTrue(body.contains("вы оба идёте"), body);

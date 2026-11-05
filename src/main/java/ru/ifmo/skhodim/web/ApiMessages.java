@@ -49,6 +49,7 @@ final class ApiMessages {
         RULES.put("does not match report target", "Это действие не подходит к цели жалобы");
         RULES.put("Unknown moderation action", "Неизвестное действие модератора");
         RULES.put("Import is already running", "Импорт уже запущен, дождитесь окончания");
+        RULES.put("Kassir sync failed", "Не удалось получить афишу с Кассир.ру. Каталог не изменён");
         RULES.put("KudaGo returned HTTP 403", "KudaGo отклонил запрос (HTTP 403). Каталог не изменён");
         RULES.put("KudaGo sync failed", "Не удалось получить события из KudaGo. Каталог не изменён");
         RULES.put("Snapshot", "Файл не похож на выгрузку событий KudaGo");

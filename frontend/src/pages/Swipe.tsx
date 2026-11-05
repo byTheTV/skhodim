@@ -72,9 +72,9 @@ const SwipeCard = forwardRef<HTMLElement, {
       <div className="swipe-body">
         <EventTags event={event} />
         <h2>{event.title}</h2>
-        <p className="line-strong">{eventDate(event.startsAt)}</p>
+        <p className="line-strong">{eventDate(event.startsAt, event.endsAt)}</p>
         <p className="line">{place(event)}</p>
-        {event.description && <p className="swipe-desc">{event.description}</p>}
+        {event.description && event.description !== event.title && <p className="swipe-desc">{event.description}</p>}
         <button type="button" className="link-btn" onClick={onOpen}>
           Подробнее о событии <ArrowRight aria-hidden />
         </button>

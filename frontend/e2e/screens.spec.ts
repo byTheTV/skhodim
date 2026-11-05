@@ -1,14 +1,11 @@
-// Скриншоты для отчёта. Данные тестовые и помечены [ТЕСТ], пока в каталоге нет реальной афиши.
+// Скриншоты для отчёта на настоящих событиях: перед съёмкой идёт импорт с Кассир.ру, нужен интернет.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, type Browser } from '@playwright/test';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, '..', '..', 'docs', 'screens');
-const SNAPSHOT = join(tmpdir(), `skhodim-screens-${process.pid}.json`);
 const PASSWORD = 'Demo12345!';
 
 async function open(browser: Browser, width: number, height: number, email: string, dark = false) {
@@ -28,13 +25,12 @@ async function open(browser: Browser, width: number, height: number, email: stri
 }
 
 test('снять экраны', async ({ browser, request }) => {
-  test.setTimeout(180_000);
-  execFileSync('node', [join(here, 'make-test-snapshot.mjs'), SNAPSHOT]);
+  test.setTimeout(480_000);
   const login = await request.post('/api/v1/auth/login', { data: { email: 'demo100@example.org', password: PASSWORD } });
   const admin = (await login.json()).token;
-  const res = await request.post('/api/v1/admin/sync/snapshot', {
-    headers: { Authorization: `Bearer ${admin}`, 'Content-Type': 'application/json' },
-    data: readFileSync(SNAPSHOT, 'utf8'),
+  const res = await request.post('/api/v1/admin/sync/kassir', {
+    headers: { Authorization: `Bearer ${admin}` },
+    timeout: 300_000,
   });
   expect(res.ok()).toBeTruthy();
   execFileSync('psql', [

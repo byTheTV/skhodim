@@ -719,7 +719,7 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
   }
   .swipe-intro-mobile { display: none; }
   .swipe-headline { display: flex; flex-direction: column; gap: 16px; justify-content: center; min-width: 0; }
-  .swipe-headline h1 { font-size: clamp(26px, 2.6vw, 56px); line-height: 1.04; overflow-wrap: anywhere; }
+  .swipe-headline h1 { font-size: clamp(26px, 2.6vw, 56px); line-height: 1.04; }
   .swipe-headline h1 em { font-style: normal; color: var(--pink); display: inline-block; transform: rotate(-3deg); }
   .swipe-next { display: flex; flex-direction: column; gap: 12px; justify-content: center; min-width: 0; }
   .swipe-next h2 { font-size: 18px; }
@@ -789,4 +789,11 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Ноутбук с узким окном: три колонки не помещаются, поэтому очередь убирается, а заголовок получает её место */
+@media (min-width: 900px) and (max-width: 1239px) {
+  .page-swipe { grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); gap: 28px; padding: 22px 28px; }
+  .swipe-next { display: none; }
+  .swipe-headline .city-row { flex-wrap: wrap; }
 }

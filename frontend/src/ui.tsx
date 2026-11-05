@@ -255,6 +255,7 @@ const COVER_STYLES: Record<string, CoverStyle> = {
   'Мастер-класс': { bg: '#00C2FF', fg: INK, accent: '#FF5A1F', icon: Brush },
   'Вечеринка': { bg: '#14062E', fg: '#CCFF00', accent: '#FF2E88', icon: Sparkles },
   'Стендап': { bg: '#FF9F1C', fg: INK, accent: '#B14DFF', icon: Mic },
+  'Шоу': { bg: '#FF3D3D', fg: INK, accent: '#FFD600', icon: Sparkles },
   'Прогулка': { bg: '#7CF0A0', fg: INK, accent: '#2B1BFF', icon: Footprints },
   'Детям': { bg: '#FFB3D9', fg: INK, accent: '#2B1BFF', icon: Baby },
 };
@@ -348,7 +349,7 @@ export function EventRow({ event, footer, compact }: { event: EventSummary; foot
         <Cover event={event} className="event-row-cover" />
         <div className="event-row-body">
           <h3>{event.title}</h3>
-          <p>{eventDate(event.startsAt)}</p>
+          <p>{eventDate(event.startsAt, event.endsAt)}</p>
           <p className="muted">{place(event)}</p>
           {!compact && <p className="event-row-price">{price(event)}{age}</p>}
         </div>

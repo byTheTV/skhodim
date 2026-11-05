@@ -28,7 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * UC-12: импорт KudaGo location=spb с upsert по (source, external_id).
+ * UC-12: импорт афиши с upsert по (source, external_id): KudaGo location=spb и Кассир.ру (KassirSource).
  * Сбой источника виден модератору и не трогает каталог (NFR-6): подмены данных нет.
  * Если сервер не может достучаться до API, события загружаются выгрузкой (importSnapshot).
  */
@@ -52,7 +52,8 @@ public class ImportService {
             Map.entry("party", "party"),
             Map.entry("stand-up", "standup"),
             Map.entry("tour", "walk"),
-            Map.entry("kids", "kids")
+            Map.entry("kids", "kids"),
+            Map.entry("show", "show")
     );
     /** KudaGo помечает бессрочные даты значениями вроде 9999 года. */
     private static final long LAST_SANE_EPOCH = OffsetDateTime.of(2100, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toEpochSecond();
@@ -61,6 +62,7 @@ public class ImportService {
     private final ImportRepository repository;
     private final CatalogRepository catalogRepository;
     private final ObjectMapper objectMapper;
+    private final KassirSource kassirSource;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
             .build();
@@ -77,11 +79,13 @@ public class ImportService {
     public ImportService(
             ImportRepository repository,
             CatalogRepository catalogRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            KassirSource kassirSource
     ) {
         this.repository = repository;
         this.catalogRepository = catalogRepository;
         this.objectMapper = objectMapper;
+        this.kassirSource = kassirSource;
     }
 
     public long startRun(long sourceId) {
@@ -112,6 +116,30 @@ public class ImportService {
             throw new BusinessRuleException("KudaGo sync failed: " + e.getMessage(), e);
         }
         return upsertAll(runId, sourceId, results, "kudago");
+    }
+
+    /** Настоящая афиша из разметки spb.kassir.ru. Сбой виден модератору и не трогает каталог (NFR-6). */
+    public Map<String, Object> syncKassir() {
+        repository.ensureSource("kassir", "Кассир.ру", "https://spb.kassir.ru");
+        repository.ensureCategory("show", "Шоу");
+        long sourceId = catalogRepository.findSourceIdByCode("kassir")
+                .orElseThrow(() -> new BusinessRuleException("catalog_source kassir is missing"));
+        long runId = startRun(sourceId);
+        JsonNode results;
+        try {
+            results = kassirSource.fetchEvents();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            repository.logError(runId, null, "SYNC", "Interrupted");
+            finish(runId, ImportRun.FAILED, 0, 1);
+            throw new BusinessRuleException("Kassir sync failed: interrupted", e);
+        } catch (Exception e) {
+            log.warn("Kassir sync failed: {}", e.getMessage());
+            repository.logError(runId, null, "SYNC", String.valueOf(e.getMessage()));
+            finish(runId, ImportRun.FAILED, 0, 1);
+            throw new BusinessRuleException("Kassir sync failed: " + e.getMessage(), e);
+        }
+        return upsertAll(runId, sourceId, results, "kassir");
     }
 
     /** Загрузка готовой выгрузки: объект с полем results или массив событий в формате KudaGo. */
@@ -248,7 +276,8 @@ public class ImportService {
                 OffsetDateTime ends = end > start && end <= LAST_SANE_EPOCH
                         ? OffsetDateTime.ofInstant(Instant.ofEpochSecond(end), ZoneOffset.UTC)
                         : starts.plusHours(2);
-                repository.upsertSession(eventId, "kudago-" + event.path("id").asText() + "-" + i, starts, ends);
+                String sessionKey = text(date, "key", "kudago-" + event.path("id").asText() + "-" + i);
+                repository.upsertSession(eventId, sessionKey, starts, ends);
                 i++;
             }
         }

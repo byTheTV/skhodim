@@ -347,6 +347,7 @@ export const api = {
   moderation: () => get<ModerationItem[]>('/admin/moderation'),
   moderate: (reportId: number, action: string) => put('/admin/moderation', { reportId, action }),
   sync: () => post<ImportResult>('/admin/sync'),
+  syncKassir: () => post<ImportResult>('/admin/sync/kassir'),
   uploadSnapshot: (json: string) => request<ImportResult>('POST', '/admin/sync/snapshot', json),
   imports: () => get<ImportRun[]>('/admin/imports'),
 };
