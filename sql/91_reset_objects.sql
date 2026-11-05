@@ -41,7 +41,12 @@ BEGIN
               'cancel_requests_on_event_hide', 'cancel_requests_on_session_cancel',
               'set_reaction', 'set_intention', 'send_request', 'resolve_request', 'expire_requests',
               'assert_conversation_participant', 'get_participants', 'get_messages',
-              'search_catalog', 'recommend_events', 'taste_plate', 'find_twin', 'going_for_event'
+              'search_catalog', 'recommend_events', 'taste_plate', 'find_twin', 'going_for_event',
+              'event_summaries', 'filter_unreacted', 'catalog_metros', 'event_user_state', 'my_event_lists',
+              'taste_similarity', 'suggest_people', 'going_people', 'public_profile', 'profile_events',
+              'requests_detail', 'cancel_request', 'chat_list', 'mark_chat_read', 'event_feedback_list',
+              'comments_feed', 'notifications_detail', 'mark_notification_read',
+              'mark_all_notifications_read', 'moderation_queue', 'import_history'
           ])
     LOOP
         EXECUTE 'DROP ROUTINE ' || r.sig::text || ' CASCADE';
