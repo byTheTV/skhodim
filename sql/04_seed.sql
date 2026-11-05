@@ -11,7 +11,9 @@ SET search_path TO :app_schema, public;
 BEGIN;
 
 INSERT INTO catalog_source (id, code, name, base_url)
-VALUES (1, 'demo', 'Демо-источник', 'https://example.org');
+VALUES
+    (1, 'demo', 'Демо-источник', 'https://example.org'),
+    (2, 'kudago', 'KudaGo', 'https://kudago.com/public-api/v1.4');
 
 INSERT INTO category (id, slug, name) VALUES
     (1, 'concert', 'Концерт'),
@@ -34,12 +36,15 @@ INSERT INTO tag (id, name) VALUES
 INSERT INTO app_user (id, email, password_hash, role)
 SELECT g,
        'demo' || g || '@example.org',
-       '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+       '$2a$10$NXtUMsxcq2MgKB2KGAXTue9.5pToxqgs2mtoMH2DHStbnvJWn1642',
        CASE WHEN g = 100 THEN 'MODERATOR' ELSE 'USER' END
 FROM generate_series(1, 100) g;
 
-INSERT INTO user_profile (user_id, nickname)
-SELECT id, 'user' || id FROM app_user;
+INSERT INTO user_profile (user_id, nickname, metro)
+SELECT id,
+       'user' || id,
+       (ARRAY['Невский проспект','Василеостровская','Площадь Восстания','Адмиралтейская','Горьковская'])[1 + ((id - 1) % 5)]
+FROM app_user;
 
 INSERT INTO user_interest (user_id, category_id)
 SELECT u.id, c.id
@@ -48,19 +53,20 @@ CROSS JOIN LATERAL (
     SELECT id FROM category ORDER BY md5(u.id::text || '-' || id::text) LIMIT 3 + (u.id % 3)
 ) c;
 
-INSERT INTO place (id, source_id, external_id, name, address, latitude, longitude)
+INSERT INTO place (id, source_id, external_id, name, address, metro, latitude, longitude)
 SELECT g,
        1,
        'place-' || g,
        'Демо-площадка ' || g,
        'Санкт-Петербург, адрес ' || g,
+       (ARRAY['Невский проспект','Василеостровская','Площадь Восстания','Адмиралтейская','Горьковская'])[1 + ((g - 1) % 5)],
        59.9 + (g % 10) * 0.02,
        30.3 + (g % 10) * 0.03
 FROM generate_series(1, 20) g;
 
 INSERT INTO event (
     id, source_id, external_id, place_id, title, description,
-    age_limit, is_free, price_from, source_url, published, imported_at
+    age_limit, is_free, price_from, source_url, ticket_url, published, imported_at
 )
 SELECT g,
        1,
@@ -73,6 +79,7 @@ SELECT g,
        g % 4 = 0,
        CASE WHEN g % 4 <> 0 THEN (g % 10) * 100 ELSE NULL END,
        'https://example.org/event/' || g,
+       'https://example.org/tickets/' || g,
        true,
        now()
 FROM generate_series(1, 1000) g;

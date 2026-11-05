@@ -1,12 +1,14 @@
 package ru.ifmo.skhodim.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.OffsetDateTime;
 
 /** Учётная запись (app_user, раздел 4.2 отчёта этапа 2). */
 public record AppUser(
         Long id,
         String email,
-        String passwordHash,
+        @JsonIgnore String passwordHash,
         String role,
         boolean banned,
         OffsetDateTime createdAt

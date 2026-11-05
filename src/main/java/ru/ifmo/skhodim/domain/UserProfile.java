@@ -4,6 +4,7 @@ package ru.ifmo.skhodim.domain;
 public record UserProfile(
         Long userId,
         String nickname,
-        String avatarKey
+        String avatarKey,
+        String metro
 ) {
 }

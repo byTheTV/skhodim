@@ -39,13 +39,30 @@ public class UserRepository {
             ps.setString(2, passwordHash);
             return ps;
         }, keyHolder);
-        long userId = keyHolder.getKey().longValue();
+        Object generated = keyHolder.getKeys() == null ? null : keyHolder.getKeys().get("id");
+        if (!(generated instanceof Number number)) {
+            throw new IllegalStateException("INSERT INTO app_user did not return id");
+        }
+        long userId = number.longValue();
 
         jdbc.update("INSERT INTO user_profile (user_id, nickname) VALUES (?, ?)", userId, nickname);
+        replaceInterests(userId, categoryIds);
+        return userId;
+    }
+
+    @Transactional
+    public void updateProfile(long userId, String nickname, String avatarKey, String metro) {
+        jdbc.update(
+                "UPDATE user_profile SET nickname = ?, avatar_key = ?, metro = ? WHERE user_id = ?",
+                nickname, avatarKey, metro, userId);
+    }
+
+    @Transactional
+    public void replaceInterests(long userId, List<Long> categoryIds) {
+        jdbc.update("DELETE FROM user_interest WHERE user_id = ?", userId);
         for (Long categoryId : categoryIds) {
             jdbc.update("INSERT INTO user_interest (user_id, category_id) VALUES (?, ?)", userId, categoryId);
         }
-        return userId;
     }
 
     public Optional<AppUser> findById(long id) {

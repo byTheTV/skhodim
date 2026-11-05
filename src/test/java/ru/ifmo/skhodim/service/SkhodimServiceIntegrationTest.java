@@ -141,6 +141,28 @@ class SkhodimServiceIntegrationTest {
                 () -> feedbackService.addReview(1, 1, 1, "Текст", 9));
     }
 
+    @Test
+    void tastePlateAndTwinUseDatabaseFunctions() {
+        assertFalse(catalogService.taste(1).isEmpty());
+        TwinMatch twin = catalogService.twin(1);
+        assertNotNull(twin);
+        assertTrue(twin.sharedCount() > 0);
+        assertNotEquals(1L, twin.userId());
+    }
+
+    @Test
+    void goingListIsEmptyWithoutMutualIntention() {
+        assertTrue(reactionService.going(3, 300).isEmpty());
+    }
+
+    @Test
+    void searchFiltersByFreeFlag() {
+        List<CatalogEntry> free = catalogService.search(
+                null, null, null, null, null, null, null, null, 10, 0, true, null);
+        assertFalse(free.isEmpty());
+        assertTrue(free.stream().allMatch(e -> Boolean.TRUE.equals(e.isFree())));
+    }
+
     private long freshSessionId() {
         return catalogRepository.findSessionsByEvent(200).stream()
                 .findFirst()

@@ -41,7 +41,7 @@ BEGIN
               'cancel_requests_on_event_hide', 'cancel_requests_on_session_cancel',
               'set_reaction', 'set_intention', 'send_request', 'resolve_request', 'expire_requests',
               'assert_conversation_participant', 'get_participants', 'get_messages',
-              'search_catalog', 'recommend_events'
+              'search_catalog', 'recommend_events', 'taste_plate', 'find_twin', 'going_for_event'
           ])
     LOOP
         EXECUTE 'DROP ROUTINE ' || r.sig::text || ' CASCADE';

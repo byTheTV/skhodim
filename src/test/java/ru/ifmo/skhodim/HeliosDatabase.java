@@ -57,7 +57,7 @@ final class HeliosDatabase implements AutoCloseable {
             mkdir(sftp, "skhodim-etap2/sql");
             for (String name : new String[]{
                     "91_reset_objects.sql", "01_schema.sql", "02_logic.sql",
-                    "03_queries_indexes.sql", "04_seed.sql"
+                    "03_queries_indexes.sql", "04_seed.sql", "07_migrate_etap1_api.sql"
             }) {
                 byte[] bytes = Files.readAllBytes(Path.of("sql", name));
                 sftp.put(new java.io.ByteArrayInputStream(bytes), "skhodim-etap2/sql/" + name);

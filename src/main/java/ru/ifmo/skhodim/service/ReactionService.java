@@ -3,6 +3,7 @@ package ru.ifmo.skhodim.service;
 import org.springframework.stereotype.Service;
 import ru.ifmo.skhodim.domain.EventIntention;
 import ru.ifmo.skhodim.domain.EventReaction;
+import ru.ifmo.skhodim.domain.GoingPerson;
 import ru.ifmo.skhodim.exception.BusinessRuleException;
 import ru.ifmo.skhodim.repository.ReactionIntentionRepository;
 
@@ -42,5 +43,13 @@ public class ReactionService {
 
     public List<EventIntention> intentionsForSession(long sessionId) {
         return repository.findIntentionsBySession(sessionId);
+    }
+
+    public void removeFavorite(long userId, long eventId) {
+        repository.clearReaction(userId, eventId);
+    }
+
+    public List<GoingPerson> going(long userId, long eventId) {
+        return repository.goingForEvent(userId, eventId);
     }
 }

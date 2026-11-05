@@ -1,9 +1,7 @@
 package ru.ifmo.skhodim.service;
 
 import org.springframework.stereotype.Service;
-import ru.ifmo.skhodim.domain.CatalogEntry;
-import ru.ifmo.skhodim.domain.Event;
-import ru.ifmo.skhodim.domain.RecommendedEvent;
+import ru.ifmo.skhodim.domain.*;
 import ru.ifmo.skhodim.exception.NotFoundException;
 import ru.ifmo.skhodim.repository.CatalogRepository;
 
@@ -12,9 +10,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * Бизнес-логика UC-02 (афиша и поиск), UC-03 (карта), UC-04 (карточка события)
- * и UC-08..UC-10 (персональная выдача свайпера). Критические запросы делегируются
- * pl/pgsql-функциям search_catalog и recommend_events (sql/03_queries_indexes.sql).
+ * Бизнес-логика UC-02 (афиша и свайп), UC-03 (поиск/карта), UC-04 (карточка),
+ * UC-09 (пластинка вкуса) и UC-10 (двойник). Критические выборки — функции БД.
  */
 @Service
 public class CatalogService {
@@ -34,27 +31,71 @@ public class CatalogService {
         return event;
     }
 
-    /** UC-02/UC-03: афиша и точки на карте через функцию search_catalog. */
+    public EventCard getCard(long eventId) {
+        Event event = getVisibleEvent(eventId);
+        Place place = event.placeId() == null
+                ? null
+                : catalogRepository.findPlaceById(event.placeId()).orElse(null);
+        return new EventCard(
+                event,
+                place,
+                catalogRepository.findSessionsByEvent(eventId),
+                catalogRepository.findCategoriesByEvent(eventId),
+                catalogRepository.findTagsByEvent(eventId)
+        );
+    }
+
     public List<CatalogEntry> search(
             String query, List<Long> categoryIds,
             BigDecimal latMin, BigDecimal latMax, BigDecimal lonMin, BigDecimal lonMax,
             OffsetDateTime from, OffsetDateTime to, int limit, int offset
     ) {
-        return catalogRepository.searchCatalog(
-                query, categoryIds, latMin, latMax, lonMin, lonMax, from, to, limit, offset);
+        return search(query, categoryIds, latMin, latMax, lonMin, lonMax, from, to, limit, offset, null, null);
     }
 
-    /** UC-08..UC-10: персональная выдача свайпера через функцию recommend_events. */
+    public List<CatalogEntry> search(
+            String query, List<Long> categoryIds,
+            BigDecimal latMin, BigDecimal latMax, BigDecimal lonMin, BigDecimal lonMax,
+            OffsetDateTime from, OffsetDateTime to, int limit, int offset,
+            Boolean isFree, String metro
+    ) {
+        return catalogRepository.searchCatalog(
+                query, categoryIds, latMin, latMax, lonMin, lonMax, from, to, limit, offset, isFree, metro);
+    }
+
     public List<RecommendedEvent> recommend(long userId, int limit, OffsetDateTime from, OffsetDateTime to) {
         return catalogRepository.recommendEvents(userId, limit, from, to);
     }
 
-    /** UC-12: модератор скрывает карточку (hidden_at), триггер отменяет ожидающие заявки. */
+    public List<TasteSlice> taste(long userId) {
+        return catalogRepository.tastePlate(userId);
+    }
+
+    public TwinMatch twin(long userId) {
+        return catalogRepository.findTwin(userId)
+                .orElseThrow(() -> new NotFoundException("Twin not found for user " + userId));
+    }
+
     public void hide(long eventId) {
         catalogRepository.hideEvent(eventId);
     }
 
     public void cancelSession(long sessionId) {
         catalogRepository.cancelSession(sessionId);
+    }
+
+    public record EventCard(
+            Event event,
+            Place place,
+            List<EventSession> sessions,
+            List<Category> categories,
+            List<Tag> tags
+    ) {
+        public String ticketUrl() {
+            if (event.ticketUrl() != null && !event.ticketUrl().isBlank()) {
+                return event.ticketUrl();
+            }
+            return event.sourceUrl();
+        }
     }
 }

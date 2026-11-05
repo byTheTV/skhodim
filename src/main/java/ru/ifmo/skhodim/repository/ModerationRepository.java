@@ -1,10 +1,12 @@
 package ru.ifmo.skhodim.repository;
 
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.ifmo.skhodim.domain.Report;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Уровень хранения сопровождения: жалобы (report, UC-12/UC-16).
@@ -30,6 +32,16 @@ public class ModerationRepository {
         return jdbc.query(
                 "SELECT * FROM report WHERE status = 'NEW' ORDER BY created_at",
                 (rs, n) -> MoreRowMappers.report(rs));
+    }
+
+    public Optional<Report> findById(long reportId) {
+        try {
+            return Optional.of(jdbc.queryForObject(
+                    "SELECT * FROM report WHERE id = ?",
+                    (rs, n) -> MoreRowMappers.report(rs), reportId));
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     public void resolve(long reportId) {

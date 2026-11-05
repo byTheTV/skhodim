@@ -1,0 +1,48 @@
+{
+  "results": [
+    {
+      "_fixture": true,
+      "id": 900001,
+      "title": "Концерт на Стрелке В.О.",
+      "description": "Камерный концерт у воды.",
+      "body_text": "Живая музыка на открытом воздухе.",
+      "is_free": false,
+      "price": "от 800 ₽",
+      "age_restriction": "16+",
+      "site_url": "https://kudago.com/spb/event/fixture-concert/",
+      "categories": ["concert"],
+      "tags": ["open-air", "классика"],
+      "images": [{"image": "https://example.org/cover-concert.jpg"}],
+      "place": {
+        "id": 800001,
+        "title": "Стрелка Васильевского острова",
+        "address": "Университетская наб., 1",
+        "subway": "Василеостровская",
+        "coords": {"lat": 59.944, "lon": 30.306}
+      },
+      "dates": [{"start": 1798300800, "end": 1798308000}]
+    },
+    {
+      "_fixture": true,
+      "id": 900002,
+      "title": "Бесплатная выставка в Эрмитаже",
+      "description": "Государственный Эрмитаж, постоянная экспозиция.",
+      "body_text": "Коллекция европейской живописи.",
+      "is_free": true,
+      "price": "",
+      "age_restriction": "0+",
+      "site_url": "https://kudago.com/spb/event/fixture-hermitage/",
+      "categories": ["exhibition"],
+      "tags": ["музей"],
+      "images": [{"image": "https://example.org/cover-hermitage.jpg"}],
+      "place": {
+        "id": 800002,
+        "title": "Государственный Эрмитаж",
+        "address": "Дворцовая пл., 2",
+        "subway": "Адмиралтейская",
+        "coords": {"lat": 59.940, "lon": 30.314}
+      },
+      "dates": [{"start": 1798387200, "end": 1798416000}]
+    }
+  ]
+}

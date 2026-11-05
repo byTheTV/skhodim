@@ -4,6 +4,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import ru.ifmo.skhodim.domain.Report;
 import ru.ifmo.skhodim.exception.BusinessRuleException;
+import ru.ifmo.skhodim.exception.NotFoundException;
 import ru.ifmo.skhodim.repository.ModerationRepository;
 
 import java.util.List;
@@ -46,5 +47,10 @@ public class ModerationService {
 
     public void resolve(long reportId) {
         repository.resolve(reportId);
+    }
+
+    public Report get(long reportId) {
+        return repository.findById(reportId)
+                .orElseThrow(() -> new NotFoundException("Report not found: " + reportId));
     }
 }

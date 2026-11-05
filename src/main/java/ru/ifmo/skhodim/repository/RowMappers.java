@@ -50,7 +50,12 @@ final class RowMappers {
     }
 
     static UserProfile userProfile(ResultSet rs) throws SQLException {
-        return new UserProfile(rs.getLong("user_id"), rs.getString("nickname"), rs.getString("avatar_key"));
+        return new UserProfile(
+                rs.getLong("user_id"),
+                rs.getString("nickname"),
+                rs.getString("avatar_key"),
+                rs.getString("metro")
+        );
     }
 
     static Category category(ResultSet rs) throws SQLException {
@@ -68,6 +73,7 @@ final class RowMappers {
                 rs.getString("external_id"),
                 rs.getString("name"),
                 rs.getString("address"),
+                rs.getString("metro"),
                 nullableDecimal(rs, "latitude"),
                 nullableDecimal(rs, "longitude")
         );

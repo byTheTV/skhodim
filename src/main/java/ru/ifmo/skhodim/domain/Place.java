@@ -9,6 +9,7 @@ public record Place(
         String externalId,
         String name,
         String address,
+        String metro,
         BigDecimal latitude,
         BigDecimal longitude
 ) {

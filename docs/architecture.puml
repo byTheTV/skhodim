@@ -72,6 +72,12 @@ package "PostgreSQL (Этап 2)" as db {
   class "JdbcTemplate" as Jdbc <<framework>>
   class "pl/pgsql функции\nи процедуры" as Functions <<database>>
   class "22 таблицы\napp_schema" as Tables <<database>>
+  note bottom of Jdbc
+    Не ORM: этап 3 запрещает замещать
+    pl/pgsql «аналогичным SQL» в Java.
+    JdbcTemplate только вызывает функции
+    этапа 2 и мапит строки в record.
+  end note
 }
 
 UiStub ..> business : будет вызывать\n(Этап 4)

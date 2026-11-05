@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.ifmo.skhodim.domain.EventIntention;
 import ru.ifmo.skhodim.domain.EventReaction;
+import ru.ifmo.skhodim.domain.GoingPerson;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,5 +57,16 @@ public class ReactionIntentionRepository {
         Boolean result = jdbc.queryForObject(
                 "SELECT user_has_active_intention(?, ?)", Boolean.class, userId, sessionId);
         return Boolean.TRUE.equals(result);
+    }
+
+    public void clearReaction(long userId, long eventId) {
+        jdbc.update("DELETE FROM event_reaction WHERE user_id = ? AND event_id = ?", userId, eventId);
+    }
+
+    public List<GoingPerson> goingForEvent(long userId, long eventId) {
+        return jdbc.query(
+                "SELECT * FROM going_for_event(?, ?)",
+                (rs, n) -> new GoingPerson(rs.getLong("user_id"), rs.getString("nickname"), rs.getLong("session_id")),
+                userId, eventId);
     }
 }

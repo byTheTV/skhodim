@@ -14,9 +14,28 @@ logging:
     ru.ifmo.skhodim: INFO
     org.springframework.jdbc.core.JdbcTemplate: WARN
 
-# Параметры приложения, не относящиеся к Spring Boot автоконфигурации.
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    display-request-duration: true
+    doc-expansion: list
+  default-produces-media-type: application/json
+  api-docs:
+    path: /v3/api-docs
+
 app:
   schema: skhodim
   request-expiration:
     enabled: true
     fixed-delay-ms: 60000
+  jwt:
+    secret: ${SKHODIM_JWT_SECRET:skhodim-dev-secret-please-change-32b}
+    ttl-seconds: 86400
+  kudago:
+    base-url: https://kudago.com/public-api/v1.4
+    location: spb
+    page-size: 20
+    max-pages: 2
