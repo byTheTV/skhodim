@@ -1,11 +1,11 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, CloudDownload, ShieldCheck, Upload, XCircle } from 'lucide-react';
-import { api, type ImportResult, type ModerationItem } from '../api';
-import { relativeTime } from '../format';
+import { CheckCircle2, CloudDownload, Copy, ShieldCheck, Upload, XCircle } from 'lucide-react';
+import { api, type DuplicateSide, type ImportResult, type ModerationItem } from '../api';
+import { relativeTime, shortDate } from '../format';
 import { PageHeader } from '../layout';
-import { Button, EmptyState, ErrorBlock, Skeleton, Tabs, useToast } from '../ui';
+import { Button, Cover, EmptyState, ErrorBlock, Skeleton, Tabs, useToast } from '../ui';
 
 const TARGET_LABEL: Record<ModerationItem['targetType'], string> = {
   event: 'Событие',
@@ -95,6 +95,15 @@ function Imports() {
       client.invalidateQueries({ queryKey: ['imports'] });
     },
   });
+  const afisha = useMutation({
+    mutationFn: api.syncAfisha,
+    onSuccess: done,
+    onError: (e: Error) => {
+      toast(e.message, 'error');
+      setResult(null);
+      client.invalidateQueries({ queryKey: ['imports'] });
+    },
+  });
   const upload = useMutation({
     mutationFn: api.uploadSnapshot,
     onSuccess: done,
@@ -119,6 +128,9 @@ function Imports() {
         <Button variant="primary" loading={kassir.isPending} onClick={() => kassir.mutate()}>
           <CloudDownload aria-hidden /> Обновить афишу с Кассир.ру
         </Button>
+        <Button variant="primary" loading={afisha.isPending} onClick={() => afisha.mutate()}>
+          <CloudDownload aria-hidden /> Обновить афишу с Афиши.ру
+        </Button>
         <Button loading={sync.isPending} onClick={() => sync.mutate()}>
           <CloudDownload aria-hidden /> Синхронизировать с KudaGo
         </Button>
@@ -130,6 +142,8 @@ function Imports() {
       {result && (
         <p className="status-line" role="status">
           <CheckCircle2 aria-hidden /> Загружено событий: {result.processed}, ошибок: {result.errors}
+          {result.merged ? `, склеено дублей: ${result.merged}` : ''}
+          {result.duplicates ? `, на проверку: ${result.duplicates}` : ''}
         </p>
       )}
       <h2 className="section-title">История запусков</h2>
@@ -154,8 +168,67 @@ function Imports() {
   );
 }
 
+function Side({ side, onKeep, busy }: { side: DuplicateSide; onKeep: () => void; busy: boolean }) {
+  return (
+    <div className="dup-side">
+      <Link to={`/events/${side.eventId}`} className="dup-event">
+        <Cover event={{ eventId: side.eventId, coverUrl: side.coverUrl, categories: [], title: side.title }} className="dup-cover" />
+        <span>
+          <b>{side.title}</b>
+          <small>{side.source} · {side.place ?? 'площадка неизвестна'}</small>
+          <small>{side.startsAt ? shortDate(side.startsAt) : 'сеансов нет'}</small>
+        </span>
+      </Link>
+      <Button block disabled={busy} onClick={onKeep}>Оставить это</Button>
+    </div>
+  );
+}
+
+/** Пары, которые автоматически склеить не решились: модератор оставляет одно событие или помечает их разными. */
+function Duplicates() {
+  const client = useQueryClient();
+  const toast = useToast();
+  const pairs = useQuery({ queryKey: ['duplicates'], queryFn: api.duplicates });
+  const settle = (message: string) => {
+    client.invalidateQueries();
+    toast(message);
+  };
+  const merge = useMutation({
+    mutationFn: ({ id, keep }: { id: number; keep: number }) => api.mergeDuplicate(id, keep),
+    onSuccess: () => settle('События склеены'),
+    onError: (e: Error) => toast(e.message, 'error'),
+  });
+  const distinct = useMutation({
+    mutationFn: api.distinctDuplicate,
+    onSuccess: () => settle('Пара больше не будет предлагаться'),
+    onError: (e: Error) => toast(e.message, 'error'),
+  });
+  const busy = merge.isPending || distinct.isPending;
+  if (pairs.isLoading) return <Skeleton />;
+  if (pairs.isError) return <ErrorBlock error={pairs.error} retry={() => pairs.refetch()} />;
+  return (
+    <div className="stack">
+      <div className="note">
+        <b>Как склеиваются дубли</b>
+        <p>После каждого импорта одинаковые события из разных источников склеиваются сами: то же время, та же площадка, то же название. Здесь пары, где совпадение неполное. При склейке лайки, планы, комментарии и жалобы переходят к оставшемуся событию.</p>
+      </div>
+      {!pairs.data?.length && <EmptyState icon={<Copy />} title="Сомнительных пар нет" text="Всё, что похоже на дубль наверняка, уже склеено." />}
+      {pairs.data?.map((pair) => (
+        <article key={pair.id} className="dup-pair">
+          <p className="muted small">{pair.reason}</p>
+          <div className="dup-sides">
+            <Side side={pair.a} busy={busy} onKeep={() => merge.mutate({ id: pair.id, keep: pair.a.eventId })} />
+            <Side side={pair.b} busy={busy} onKeep={() => merge.mutate({ id: pair.id, keep: pair.b.eventId })} />
+          </div>
+          <Button variant="ghost" block disabled={busy} onClick={() => distinct.mutate(pair.id)}>Это разные события</Button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function Admin() {
-  const [tab, setTab] = useState<'reports' | 'imports'>('reports');
+  const [tab, setTab] = useState<'reports' | 'duplicates' | 'imports'>('reports');
   return (
     <div className="page">
       <PageHeader title="Модерация" back="/profile" section />
@@ -164,10 +237,13 @@ export function Admin() {
         onChange={setTab}
         items={[
           { value: 'reports', label: 'Жалобы' },
+          { value: 'duplicates', label: 'Дубли' },
           { value: 'imports', label: 'Импорт афиши' },
         ]}
       />
-      {tab === 'reports' ? <Moderation /> : <Imports />}
+      {tab === 'reports' && <Moderation />}
+      {tab === 'duplicates' && <Duplicates />}
+      {tab === 'imports' && <Imports />}
     </div>
   );
 }

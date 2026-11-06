@@ -22,7 +22,7 @@ const exists = psql(['-d', 'postgres', '-Atc', `SELECT 1 FROM pg_database WHERE 
 if (!exists) {
   psql(['-d', 'postgres', '-c', `CREATE DATABASE ${DB} ENCODING 'UTF8' TEMPLATE template0`]);
 }
-for (const file of ['91_reset_objects', '01_schema', '02_logic', '03_queries_indexes', '08_stage4', '09_base_data']) {
+for (const file of ['91_reset_objects', '01_schema', '02_logic', '03_queries_indexes', '08_stage4', '11_sources', '09_base_data']) {
   psql(['-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-v', 'app_schema=skhodim', '-f', join(sql, `${file}.sql`)]);
 }
 console.log(`База ${DB} готова`);

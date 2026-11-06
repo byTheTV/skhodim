@@ -36,7 +36,10 @@ app:
     ttl-seconds: 86400
   kassir:
     base-url: https://spb.kassir.ru
-    cron: "0 0 6 * * *"
+  afisha:
+    base-url: https://www.afisha.ru
+  catalog:
+    refresh-cron: "0 0 6 * * *"
   kudago:
     base-url: https://kudago.com/public-api/v1.4
     location: spb

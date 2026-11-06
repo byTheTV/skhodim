@@ -60,8 +60,22 @@ public final class Views {
             List<Category> categories,
             List<Tag> tags,
             String sourceUrl,
+            List<Offer> offers,
             EventUserState state
     ) {
+    }
+
+    /** Где купить билет: событие могло прийти из нескольких источников. */
+    public record Offer(String sourceCode, String sourceName, String url, java.math.BigDecimal priceFrom, String priceText) {
+    }
+
+    /** Одна сторона пары возможных дублей. */
+    public record DuplicateSide(long eventId, String title, String coverUrl, String place, OffsetDateTime startsAt, String source) {
+    }
+
+    /** Пара событий, похожих на дубль, которую должен рассмотреть модератор. */
+    public record DuplicatePair(long id, java.math.BigDecimal score, String reason, OffsetDateTime createdAt,
+                                DuplicateSide a, DuplicateSide b) {
     }
 
     /** my_event_lists: строка вкладки «Список». */

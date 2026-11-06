@@ -60,6 +60,7 @@ public class PresentationService {
                 card.categories(),
                 card.tags(),
                 card.event().sourceUrl(),
+                repository.eventOffers(eventId),
                 state);
     }
 
@@ -195,6 +196,10 @@ public class PresentationService {
 
     public List<ModerationItem> moderationQueue() {
         return repository.moderationQueue();
+    }
+
+    public List<DuplicatePair> duplicateQueue() {
+        return repository.duplicateQueue();
     }
 
     public List<ImportHistoryItem> importHistory(int limit) {

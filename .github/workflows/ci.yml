@@ -47,7 +47,7 @@ jobs:
       - name: Подготовить тестовую БД
         run: |
           psql -d postgres -c "CREATE DATABASE skhodim_test ENCODING 'UTF8' TEMPLATE template0"
-          for f in 01_schema 02_logic 03_queries_indexes 04_seed 08_stage4; do
+          for f in 01_schema 02_logic 03_queries_indexes 04_seed 08_stage4 11_sources; do
             psql -d skhodim_test -q -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql
           done
           psql -d skhodim_test -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/05_tests.sql

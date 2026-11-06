@@ -217,7 +217,7 @@ export function EventPage() {
     return <div className="page"><PageHeader title="Событие" back /><ErrorBlock error={details.error} /></div>;
   }
 
-  const { summary: event, state, tags, sourceUrl } = details.data;
+  const { summary: event, state, tags, sourceUrl, offers } = details.data;
   const liked = state.reaction === 'LIKE';
   const isGoing = state.goingSessionId != null;
   const session = sessionChoice ?? state.goingSessionId ?? upcoming[0]?.id ?? null;
@@ -297,10 +297,22 @@ export function EventPage() {
               <b className="buy-price">{price(event)}</b>
               {!event.isFree && <small>за билет</small>}
             </div>
-            <a className="btn btn-secondary" href={event.ticketUrl ?? sourceUrl} target="_blank" rel="noreferrer">
+            <a className="btn btn-secondary" href={offers[0]?.url ?? event.ticketUrl ?? sourceUrl} target="_blank" rel="noreferrer">
               <ExternalLink aria-hidden /> Билеты
             </a>
           </div>
+          {offers.length > 1 && (
+            <div className="offers" aria-label="Где купить билеты">
+              <span className="muted small">Где купить</span>
+              {offers.map((offer) => (
+                <a key={offer.sourceCode} href={offer.url} target="_blank" rel="noreferrer" className="offer">
+                  <span>{offer.sourceName}</span>
+                  <b>{offer.priceText ?? 'цена на сайте'}</b>
+                  <ExternalLink aria-hidden />
+                </a>
+              ))}
+            </div>
+          )}
 
           {upcoming.length > 1 && (
             <label className="field">

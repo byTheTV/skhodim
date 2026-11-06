@@ -9,7 +9,7 @@ spring:
 
 app:
   schema: skhodim
-  kassir:
-    cron: "-"
+  catalog:
+    refresh-cron: "-"
   request-expiration:
     enabled: false

@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(
         classes = SkhodimApplication.class,
-        properties = {"app.kudago.base-url=http://127.0.0.1:1/unreachable", "app.kassir.base-url=http://127.0.0.1:1", "app.kassir.pause-ms=0"}
+        properties = {"app.kudago.base-url=http://127.0.0.1:1/unreachable", "app.kassir.base-url=http://127.0.0.1:1", "app.kassir.pause-ms=0", "app.afisha.base-url=http://127.0.0.1:1", "app.afisha.pause-ms=0"}
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -363,6 +363,20 @@ class ApiFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"results\":[]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Файл не похож на выгрузку событий KudaGo"));
+    }
+
+    @Test
+    void duplicateQueueIsForModeratorsOnlyAndEventShowsWhereToBuy() throws Exception {
+        mvc.perform(auth(get("/api/v1/admin/duplicates"), login(1))).andExpect(status().isForbidden());
+        mvc.perform(auth(get("/api/v1/admin/duplicates"), login(100))).andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+        mvc.perform(get("/api/v1/events/200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.offers[0].url").isNotEmpty());
+        // Ошибка из БД прерывает транзакцию теста, поэтому эта проверка последняя.
+        mvc.perform(auth(post("/api/v1/admin/duplicates/999999/distinct"), login(100)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Эту пару уже рассмотрели"));
     }
 
     /** NFR-6: недоступная афиша Кассира показывается как сбой, каталог остаётся прежним. */

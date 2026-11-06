@@ -49,6 +49,10 @@ final class ApiMessages {
         RULES.put("does not match report target", "Это действие не подходит к цели жалобы");
         RULES.put("Unknown moderation action", "Неизвестное действие модератора");
         RULES.put("Import is already running", "Импорт уже запущен, дождитесь окончания");
+        RULES.put("Afisha sync failed", "Не удалось получить афишу с Афиши.ру. Каталог не изменён");
+        RULES.put("Merged event has reviewed sessions", "У события есть отзывы с оценкой, склеить его нельзя");
+        RULES.put("Duplicate pair is not pending", "Эту пару уже рассмотрели");
+        RULES.put("Keep event must belong to the pair", "Оставить можно только одно из двух событий пары");
         RULES.put("Kassir sync failed", "Не удалось получить афишу с Кассир.ру. Каталог не изменён");
         RULES.put("KudaGo returned HTTP 403", "KudaGo отклонил запрос (HTTP 403). Каталог не изменён");
         RULES.put("KudaGo sync failed", "Не удалось получить события из KudaGo. Каталог не изменён");

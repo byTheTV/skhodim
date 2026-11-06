@@ -24,15 +24,25 @@ async function open(browser: Browser, width: number, height: number, email: stri
   return page;
 }
 
+/** Постеры Афиши.ру крупные: снимок делается, когда картинки в кадре догрузились (ленивые ниже кадра не ждём). */
+async function imagesReady(page: import('@playwright/test').Page) {
+  await page.waitForFunction(() => [...document.images].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.width > 0; }).every((i) => i.complete), undefined, { timeout: 15_000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(300);
+}
+
 test('снять экраны', async ({ browser, request }) => {
-  test.setTimeout(480_000);
+  test.setTimeout(720_000);
   const login = await request.post('/api/v1/auth/login', { data: { email: 'demo100@example.org', password: PASSWORD } });
   const admin = (await login.json()).token;
-  const res = await request.post('/api/v1/admin/sync/kassir', {
-    headers: { Authorization: `Bearer ${admin}` },
-    timeout: 300_000,
-  });
-  expect(res.ok()).toBeTruthy();
+  // Два источника: Афиша.ру после Кассира, чтобы на снимках были склеенные события с двумя ссылками на покупку.
+  for (const source of ['kassir', 'afisha']) {
+    const res = await request.post(`/api/v1/admin/sync/${source}`, {
+      headers: { Authorization: `Bearer ${admin}` },
+      timeout: 300_000,
+    });
+    expect(res.ok()).toBeTruthy();
+  }
   execFileSync('psql', [
     '-h', process.env.PGHOST ?? 'localhost', '-U', process.env.PGUSER ?? 'postgres', '-d', 'skhodim_e2e',
     '-q', '-v', 'ON_ERROR_STOP=1', '-v', 'app_schema=skhodim', '-f', join(here, '..', '..', 'sql', '10_demo_activity.sql'),
@@ -57,6 +67,7 @@ test('снять экраны', async ({ browser, request }) => {
     await mobile.goto(path);
     await mobile.waitForLoadState('networkidle').catch(() => undefined);
     await mobile.waitForTimeout(400);
+    await imagesReady(mobile);
     await mobile.screenshot({ path: join(OUT, `m-${name}.png`) });
   }
   await mobile.goto('/');
@@ -69,6 +80,7 @@ test('снять экраны', async ({ browser, request }) => {
     await desktop.goto(path);
     await desktop.waitForLoadState('networkidle').catch(() => undefined);
     await desktop.waitForTimeout(400);
+    await imagesReady(desktop);
     await desktop.screenshot({ path: join(OUT, `d-${name}.png`) });
   }
 
@@ -84,4 +96,8 @@ test('снять экраны', async ({ browser, request }) => {
   await moderator.waitForLoadState('networkidle').catch(() => undefined);
   await moderator.waitForTimeout(400);
   await moderator.screenshot({ path: join(OUT, 'd-admin.png') });
+  await moderator.getByRole('tab', { name: 'Дубли' }).click();
+  await moderator.waitForLoadState('networkidle').catch(() => undefined);
+  await imagesReady(moderator);
+  await moderator.screenshot({ path: join(OUT, 'd-duplicates.png') });
 });

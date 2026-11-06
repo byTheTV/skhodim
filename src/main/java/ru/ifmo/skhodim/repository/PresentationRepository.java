@@ -255,6 +255,30 @@ public class PresentationRepository {
                         ts(rs, "created_at")));
     }
 
+    public List<Offer> eventOffers(long eventId) {
+        return jdbc.query("SELECT * FROM event_offers(?)",
+                (rs, n) -> new Offer(
+                        rs.getString("source_code"),
+                        rs.getString("source_name"),
+                        rs.getString("url"),
+                        rs.getBigDecimal("price_from"),
+                        rs.getString("price_text")),
+                eventId);
+    }
+
+    public List<DuplicatePair> duplicateQueue() {
+        return jdbc.query("SELECT * FROM duplicate_queue()",
+                (rs, n) -> new DuplicatePair(
+                        rs.getLong("id"),
+                        rs.getBigDecimal("score"),
+                        rs.getString("reason"),
+                        ts(rs, "created_at"),
+                        new DuplicateSide(rs.getLong("a_id"), rs.getString("a_title"), rs.getString("a_cover"),
+                                rs.getString("a_place"), ts(rs, "a_starts"), rs.getString("a_source")),
+                        new DuplicateSide(rs.getLong("b_id"), rs.getString("b_title"), rs.getString("b_cover"),
+                                rs.getString("b_place"), ts(rs, "b_starts"), rs.getString("b_source"))));
+    }
+
     public List<ImportHistoryItem> importHistory(int limit) {
         return jdbc.query("SELECT * FROM import_history(?)",
                 (rs, n) -> new ImportHistoryItem(

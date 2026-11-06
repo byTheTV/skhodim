@@ -3,7 +3,7 @@
 #
 #   deploy/db.sh check     что есть в схеме: таблицы проекта и всё остальное (ничего не меняет)
 #   deploy/db.sh backup    копия таблиц проекта в ~/skhodim/backups
-#   deploy/db.sh migrate   применить 08_stage4.sql: только добавляет объекты, данные не удаляет
+#   deploy/db.sh migrate   применить 08_stage4.sql и 11_sources.sql: только добавляет объекты, данные не удаляет
 #   deploy/db.sh reset     пересоздать таблицы проекта без демо-событий (спросит подтверждение)
 #   deploy/db.sh activity  добавить активность демо-учёток поверх импортированных событий
 #
@@ -73,6 +73,7 @@ case "$COMMAND" in
         ;;
     migrate)
         psql_run -q -f "$SQL_DIR/08_stage4.sql"
+        psql_run -q -f "$SQL_DIR/11_sources.sql"
         echo "Миграция применена"
         ;;
     reset)
@@ -85,7 +86,7 @@ case "$COMMAND" in
             [ "$answer" = "reset" ] || { echo "Отменено"; exit 1; }
         fi
         backup
-        for f in 91_reset_objects 01_schema 02_logic 03_queries_indexes 08_stage4 09_base_data; do
+        for f in 91_reset_objects 01_schema 02_logic 03_queries_indexes 08_stage4 11_sources 09_base_data; do
             echo "== $f"
             psql_run -q -f "$SQL_DIR/$f.sql"
         done

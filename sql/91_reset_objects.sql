@@ -11,7 +11,7 @@ DECLARE
     t text;
 BEGIN
     FOREACH t IN ARRAY ARRAY[
-        'import_error', 'import_run', 'report', 'notification', 'event_feedback',
+        'event_duplicate', 'event_link', 'import_error', 'import_run', 'report', 'notification', 'event_feedback',
         'message', 'conversation', 'companion_request', 'intention_period',
         'event_intention', 'event_reaction', 'event_tag', 'event_category',
         'event_session', 'event', 'place', 'tag', 'category', 'user_interest',
@@ -46,7 +46,11 @@ BEGIN
               'taste_similarity', 'suggest_people', 'going_people', 'public_profile', 'profile_events',
               'requests_detail', 'cancel_request', 'chat_list', 'mark_chat_read', 'event_feedback_list',
               'comments_feed', 'notifications_detail', 'mark_notification_read',
-              'mark_all_notifications_read', 'moderation_queue', 'import_history'
+              'mark_all_notifications_read', 'moderation_queue', 'import_history',
+              'norm_text', 'title_tokens', 'place_tokens', 'token_containment', 'token_jaccard',
+              'find_place_alias', 'refresh_event', 'upsert_event_session', 'event_offers',
+              'find_duplicate_pairs', 'session_has_activity', 'merge_events', 'resolve_duplicates',
+              'duplicate_queue', 'mark_distinct'
           ])
     LOOP
         EXECUTE 'DROP ROUTINE ' || r.sig::text || ' CASCADE';

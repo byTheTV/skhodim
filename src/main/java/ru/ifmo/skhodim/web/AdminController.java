@@ -5,7 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import ru.ifmo.skhodim.domain.Report;
+import ru.ifmo.skhodim.domain.Views.DuplicatePair;
 import ru.ifmo.skhodim.domain.Views.ImportHistoryItem;
+import ru.ifmo.skhodim.security.AuthFacade;
 import ru.ifmo.skhodim.domain.Views.ModerationItem;
 import ru.ifmo.skhodim.service.PresentationService;
 import ru.ifmo.skhodim.exception.BusinessRuleException;
@@ -29,6 +31,7 @@ public class AdminController {
     private final FeedbackService feedbackService;
     private final UserService userService;
     private final PresentationService presentation;
+    private final AuthFacade auth;
 
     public AdminController(
             ImportService importService,
@@ -36,7 +39,8 @@ public class AdminController {
             CatalogService catalogService,
             FeedbackService feedbackService,
             UserService userService,
-            PresentationService presentation
+            PresentationService presentation,
+            AuthFacade auth
     ) {
         this.importService = importService;
         this.moderationService = moderationService;
@@ -44,6 +48,7 @@ public class AdminController {
         this.feedbackService = feedbackService;
         this.userService = userService;
         this.presentation = presentation;
+        this.auth = auth;
     }
 
     @PostMapping("/sync")
@@ -62,6 +67,38 @@ public class AdminController {
     )
     public Map<String, Object> syncKassir() {
         return importService.syncKassir();
+    }
+
+    @PostMapping("/sync/afisha")
+    @Operation(
+            summary = "Обновить афишу с Афиши.ру",
+            description = "Читает разметку schema.org на страницах afisha.ru/spb. После импорта дубли с другими источниками склеиваются."
+    )
+    public Map<String, Object> syncAfisha() {
+        return importService.syncAfisha();
+    }
+
+    @GetMapping("/duplicates")
+    @Operation(summary = "Возможные дубли", description = "Пары, которые автоматически склеить не решились: похожи, но не наверняка.")
+    public List<DuplicatePair> duplicates() {
+        return presentation.duplicateQueue();
+    }
+
+    @PostMapping("/duplicates/{id}/merge")
+    @Operation(
+            summary = "Склеить пару",
+            description = "keep — событие пары, которое останется. Сеансы, лайки, планы, комментарии и жалобы второго переходят к нему."
+    )
+    public Map<String, String> mergeDuplicate(@PathVariable long id, @RequestParam long keep) {
+        importService.mergeDuplicate(id, keep, auth.require().id());
+        return Map.of("status", "merged");
+    }
+
+    @PostMapping("/duplicates/{id}/distinct")
+    @Operation(summary = "Это разные события", description = "Пара больше не предлагается модератору.")
+    public Map<String, String> distinct(@PathVariable long id) {
+        importService.markDistinct(id, auth.require().id());
+        return Map.of("status", "distinct");
     }
 
     @PostMapping(value = "/sync/snapshot", consumes = "application/json")

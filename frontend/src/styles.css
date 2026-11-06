@@ -447,6 +447,19 @@ input:not([type='search']):focus, textarea:focus, select:focus { outline: 0; bor
 .buy-card > div { flex: 1; min-width: 0; }
 .buy-card small { display: block; color: var(--muted); }
 .buy-card .btn { flex: none; min-height: 46px; background: var(--yellow); color: var(--on-pop); }
+.offers { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: var(--surface); border-radius: var(--radius-panel); }
+.offer { display: flex; align-items: center; gap: 10px; text-decoration: none; padding: 6px 0; font-size: 14px; }
+.offer span { flex: 1; min-width: 0; }
+.offer svg { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.offer + .offer { border-top: 1px dashed var(--line); }
+.dup-pair { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--surface); border-radius: var(--radius-card); }
+.dup-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dup-side { display: flex; flex-direction: column; gap: 8px; }
+.dup-event { display: flex; flex-direction: column; gap: 8px; flex: 1; text-decoration: none; font-size: 13.5px; }
+.dup-event span { display: flex; flex-direction: column; gap: 2px; }
+.dup-event small { color: var(--muted); }
+.dup-cover { height: 110px; border-radius: 14px; }
+.dup-side .btn { background: var(--bg); border: 2px solid var(--line); }
 .buy-price { display: block; font: 400 20px/1.15 var(--display); }
 .going-card {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;

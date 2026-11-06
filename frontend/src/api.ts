@@ -36,8 +36,19 @@ export type EventDetails = {
   categories: Category[];
   tags: { id: number; name: string }[];
   sourceUrl: string;
+  offers: Offer[];
   state: EventUserState;
 };
+export type Offer = { sourceCode: string; sourceName: string; url: string; priceFrom: number | null; priceText: string | null };
+export type DuplicateSide = {
+  eventId: number;
+  title: string;
+  coverUrl: string | null;
+  place: string | null;
+  startsAt: string | null;
+  source: string;
+};
+export type DuplicatePair = { id: number; score: number; reason: string; createdAt: string; a: DuplicateSide; b: DuplicateSide };
 export type ListEntry = { kind: string; sessionId: number | null; markedAt: string; event: EventSummary };
 export type MyLists = { going: ListEntry[]; liked: ListEntry[]; visited: ListEntry[] };
 export type Person = {
@@ -183,7 +194,15 @@ export type ImportRun = {
   errorCount: number;
   lastError: string | null;
 };
-export type ImportResult = { runId: number; status: string; processed: number; errors: number; origin: string };
+export type ImportResult = {
+  runId: number;
+  status: string;
+  processed: number;
+  errors: number;
+  origin: string;
+  merged?: number;
+  duplicates?: number;
+};
 export type Metro = { metro: string; eventCount: number };
 export type AuthResponse = { token: string; userId: number; email: string; role: 'USER' | 'MODERATOR' };
 
@@ -348,6 +367,10 @@ export const api = {
   moderate: (reportId: number, action: string) => put('/admin/moderation', { reportId, action }),
   sync: () => post<ImportResult>('/admin/sync'),
   syncKassir: () => post<ImportResult>('/admin/sync/kassir'),
+  syncAfisha: () => post<ImportResult>('/admin/sync/afisha'),
+  duplicates: () => get<DuplicatePair[]>('/admin/duplicates'),
+  mergeDuplicate: (id: number, keep: number) => post<{ status: string }>(`/admin/duplicates/${id}/merge?keep=${keep}`),
+  distinctDuplicate: (id: number) => post<{ status: string }>(`/admin/duplicates/${id}/distinct`),
   uploadSnapshot: (json: string) => request<ImportResult>('POST', '/admin/sync/snapshot', json),
   imports: () => get<ImportRun[]>('/admin/imports'),
 };
