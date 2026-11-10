@@ -12,9 +12,9 @@ set -eu
 JAR_SOURCE=${1:?Укажите путь к JAR}
 SKHODIM_HOME=${SKHODIM_HOME:-$HOME/skhodim}
 SKHODIM_PROFILE=${SKHODIM_PROFILE:-helios}
-SERVER_PORT=${SERVER_PORT:-18080}
+# 18080 занимали другие студенты, когда наш процесс был остановлен; 28467 выбран по номеру учётки.
+SERVER_PORT=${SERVER_PORT:-28467}
 HEALTH_TRIES=${HEALTH_TRIES:-45}
-HEALTH_URL="http://127.0.0.1:${SERVER_PORT}/api/v1/health"
 
 RELEASES="$SKHODIM_HOME/releases"
 SHARED="$SKHODIM_HOME/shared"
@@ -37,6 +37,8 @@ fi
 set -a
 . "$ENV_FILE"
 set +a
+# Порт можно переопределить строкой SERVER_PORT=... в shared/env.
+HEALTH_URL="http://127.0.0.1:${SERVER_PORT}/api/v1/health"
 
 if [ "$SKHODIM_PROFILE" = "helios" ] && [ -z "${SKHODIM_DB_PASSWORD:-}" ]; then
     SKHODIM_DB_PASSWORD=$(awk -F: 'NF >= 5 { print $5; exit }' "$HOME/.pgpass")
@@ -73,10 +75,19 @@ start_app() {
     echo $! > "$PID_FILE"
 }
 
+# Наш сервис отвечает своей схемой: так его не спутать с чужим процессом на том же порту.
+is_ours() {
+    curl -fsS -m 3 "$HEALTH_URL" 2>/dev/null | grep -q "\"schema\":\"$SKHODIM_SCHEMA\""
+}
+
+port_busy() {
+    curl -s -m 3 -o /dev/null "http://127.0.0.1:${SERVER_PORT}/" 2>/dev/null
+}
+
 wait_healthy() {
     i=0
     while [ "$i" -lt "$HEALTH_TRIES" ]; do
-        if curl -fsS -m 3 "$HEALTH_URL" 2>/dev/null | grep -q '"status":"ok"'; then
+        if is_ours; then
             return 0
         fi
         if ! is_running; then
@@ -100,6 +111,11 @@ mkdir -p "$release"
 cp "$JAR_SOURCE" "$release/skhodim.jar"
 
 stop_app
+if port_busy; then
+    rm -rf "$release"
+    echo "Порт $SERVER_PORT занят чужим процессом. Выберите другой: SERVER_PORT=<порт> в ~/skhodim/shared/env"
+    exit 1
+fi
 start_app "$release/skhodim.jar"
 
 if wait_healthy; then

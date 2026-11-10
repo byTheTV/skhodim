@@ -37,7 +37,7 @@ public class OpenApiConfig {
                                 Свайп, избранное, «хочу пойти», чат, пластинка и двойник — только с JWT.
                                 Админка — только роль MODERATOR.
                                 """))
-                .addServersItem(new Server().url("/").description("Текущий хост (туннель :18080 или локально :8080)"))
+                .addServersItem(new Server().url("/").description("Текущий хост (туннель :28467 или локально :8080)"))
                 .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
                 .components(new Components().addSecuritySchemes(
                         "bearer-jwt",

@@ -15,7 +15,9 @@ set -eu
 
 COMMAND=${1:-status}
 SKHODIM_HOME=${SKHODIM_HOME:-$HOME/skhodim}
-SERVER_PORT=${SERVER_PORT:-18080}
+[ -f "$SKHODIM_HOME/shared/env" ] && . "$SKHODIM_HOME/shared/env"
+SERVER_PORT=${SERVER_PORT:-28467}
+SCHEMA=${SKHODIM_SCHEMA:-$(id -un)}
 DIR="$SKHODIM_HOME/tunnel"
 TUNA="$DIR/tuna/tuna"
 LOG="$DIR/tuna.log"
@@ -33,7 +35,19 @@ current_url() {
     grep -o 'Forwarding https://[^ ]*' "$LOG" | tail -1 | cut -d' ' -f2
 }
 
+# Туннель открывает порт всему интернету, поэтому сначала проверяем, что на нём наш сервис.
+# Если наш процесс убили, порт может занять чужое приложение, и туннель показал бы его.
+app_is_ours() {
+    curl -fsS -m 5 "http://127.0.0.1:${SERVER_PORT}/api/v1/health" 2>/dev/null \
+        | grep -q "\"schema\":\"$SCHEMA\""
+}
+
 start() {
+    if ! app_is_ours; then
+        echo "На порту $SERVER_PORT не отвечает приложение «Сходим», туннель не запускаю"
+        stop > /dev/null
+        exit 1
+    fi
     if [ -n "${TUNA_SUBDOMAIN:-}" ]; then
         echo "$TUNA_SUBDOMAIN" > "$DIR/subdomain"
     fi
