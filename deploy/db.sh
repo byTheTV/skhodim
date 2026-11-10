@@ -21,15 +21,17 @@ export PGCLIENTENCODING=UTF8
 
 PROJECT_TABLES="app_user user_profile user_interest catalog_source category tag place event event_session \
 event_category event_tag event_reaction event_intention intention_period companion_request conversation \
-message event_feedback notification report import_run import_error"
+message event_feedback notification report import_run import_error event_link event_duplicate"
 
 psql_run() {
     psql -h "$PG_HOST" -d "$PG_DB" -v ON_ERROR_STOP=1 -v "app_schema=$SCHEMA" "$@"
 }
 
 in_list() {
-    for t in $PROJECT_TABLES; do
-        [ "$t" = "$1" ] && return 0
+    # local обязателен: цикл в check тоже использует переменную t.
+    local project_table
+    for project_table in $PROJECT_TABLES; do
+        [ "$project_table" = "$1" ] && return 0
     done
     return 1
 }
