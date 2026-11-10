@@ -27,7 +27,10 @@ export default defineConfig({
   },
   webServer: {
     command: `java -jar ../target/skhodim.jar --spring.profiles.active=local --server.port=${PORT} `
-      + `"--spring.datasource.url=${DB}" --app.kudago.base-url=http://127.0.0.1:1/unreachable --app.kassir.cron=-`,
+      // Источники намеренно недоступны: тесты не ходят на настоящие сайты и проверяют, как виден сбой.
+      + `"--spring.datasource.url=${DB}" --app.catalog.refresh-cron=- `
+      + '--app.kassir.base-url=http://127.0.0.1:1 --app.kassir.pause-ms=0 '
+      + '--app.afisha.base-url=http://127.0.0.1:1 --app.afisha.pause-ms=0',
     url: `http://localhost:${PORT}/api/v1/health`,
     reuseExistingServer: false,
     timeout: 60_000,

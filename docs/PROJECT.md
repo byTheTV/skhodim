@@ -167,13 +167,13 @@ PostgreSQL: таблицы, триггеры целостности, функц�
 
 | Группа | Методы |
 |---|---|
-| Вход | `POST /auth/register`, `/auth/login`, `/auth/logout` |
+| Вход | `POST /auth/register`, `/auth/login` (выход — клиент забывает токен, сервер JWT не хранит) |
 | События | `GET /events` (лента и поиск с фильтрами), `GET /events/{id}` (карточка, сеансы, где купить), `POST /events/{id}/swipe`, `GET/POST/DELETE /events/{id}/going`, `GET/POST /events/{id}/comments`, `DELETE /events/{id}/comments/{feedbackId}`, `GET/POST /events/{id}/reviews`, `GET /events/{id}/share-card` (PNG 9:16 для сторис) |
 | Справочники | `GET /categories`, `GET /metros` |
 | Я и профиль | `GET/PUT /profile`, `GET /me/taste`, `GET /me/twin`, `GET /me/badges`, `GET /lists`, `GET /favorites`, `DELETE /favorites/{eventId}`, `GET /notifications`, `PUT /notifications/{id}`, `POST /notifications/read-all`, `POST /reports` |
 | Соцсеть | `GET /people/suggested`, `GET /users/{id}`, `GET /feed/comments` |
 | Компания и чат | `GET/POST /companion-requests`, `GET/PUT /companion-requests/{id}`, `POST /companion-requests/{id}/cancel`, `GET /chats`, `GET /chats/{id}`, `GET /chats/{id}/participants`, `GET/POST /chats/{id}/messages`, `POST /chats/{id}/read` |
-| Модерация | `GET/PUT /admin/moderation`, `POST /admin/sync` (KudaGo), `/admin/sync/snapshot`, `/admin/sync/kassir`, `/admin/sync/afisha`, `GET /admin/imports`, `GET /admin/duplicates`, `POST /admin/duplicates/{id}/merge?keep=`, `POST /admin/duplicates/{id}/distinct` |
+| Модерация | `GET/PUT /admin/moderation`, `POST /admin/sync/snapshot` (сохранённая выгрузка, так тесты получают события), `/admin/sync/kassir`, `/admin/sync/afisha`, `GET /admin/imports`, `GET /admin/duplicates`, `POST /admin/duplicates/{id}/merge?keep=`, `POST /admin/duplicates/{id}/distinct` |
 | Служебное | `GET /health` |
 
 ### 5.4. Фоновые задачи
@@ -233,7 +233,7 @@ PostgreSQL: таблицы, триггеры целостности, функц�
 
 ### 6.4. Запуск импорта
 
-- **Кнопки модератора:** «Обновить афишу с Кассир.ру» (около 3,5 минуты), «Обновить афишу с Афиши.ру» (около 1,5 минуты), «Синхронизировать с KudaGo», «Загрузить выгрузку JSON».
+- **Кнопки модератора:** «Обновить афишу с Кассир.ру» (около 3,5 минуты), «Обновить афишу с Афиши.ру» (около 1,5 минуты), «Загрузить выгрузку JSON». Живой синхронизации с KudaGo нет: сайт закрыт проверкой на бота.
 - **Автоматически** раз в сутки, см. раздел 5.4.
 - **Запись идемпотентна:** повторный импорт обновляет события, а не создаёт новые. Каждый запуск пишется в `import_run`, ошибки отдельных событий в `import_error`; история видна на вкладке «Импорт афиши».
 

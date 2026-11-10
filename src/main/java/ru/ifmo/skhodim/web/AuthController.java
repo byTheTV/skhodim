@@ -55,12 +55,6 @@ public class AuthController {
         return tokenResponse(userService.authenticate(body.email(), body.password()));
     }
 
-    @PostMapping("/logout")
-    @Operation(summary = "Выход", description = "Сервер JWT не хранит. Клиент просто забывает токен.")
-    public Map<String, String> logout() {
-        return Map.of("status", "ok");
-    }
-
     private Map<String, Object> tokenResponse(AppUser user) {
         return Map.of(
                 "token", jwtService.issue(user),

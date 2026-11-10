@@ -40,8 +40,3 @@ app:
     base-url: https://www.afisha.ru
   catalog:
     refresh-cron: "0 0 6 * * *"
-  kudago:
-    base-url: https://kudago.com/public-api/v1.4
-    location: spb
-    page-size: 20
-    max-pages: 2

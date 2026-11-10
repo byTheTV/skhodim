@@ -51,15 +51,6 @@ public class AdminController {
         this.auth = auth;
     }
 
-    @PostMapping("/sync")
-    @Operation(
-            summary = "Синхронизация KudaGo",
-            description = "Тянет location=spb, upsert по (source, external_id). Если KudaGo недоступен, вернётся ошибка, каталог не меняется (NFR-6)."
-    )
-    public Map<String, Object> sync() {
-        return importService.syncKudago();
-    }
-
     @PostMapping("/sync/kassir")
     @Operation(
             summary = "Обновить афишу с Кассир.ру",
@@ -103,8 +94,8 @@ public class AdminController {
 
     @PostMapping(value = "/sync/snapshot", consumes = "application/json")
     @Operation(
-            summary = "Загрузить выгрузку KudaGo",
-            description = "Тело: JSON ответа GET /events/ (объект с results или массив). Тот же upsert, что и при синхронизации."
+            summary = "Загрузить сохранённую выгрузку",
+            description = "Тело: события в формате KudaGo (объект с results или массив). Тот же upsert, что и при импорте; так автотесты получают тестовые события."
     )
     public Map<String, Object> snapshot(@RequestBody String json) {
         return importService.importSnapshot(json);

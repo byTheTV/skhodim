@@ -386,7 +386,7 @@ test('импорт: сбой источника виден, каталог це�
   await page.goto('/admin');
   await page.getByRole('tab', { name: 'Импорт афиши' }).click();
 
-  await page.getByRole('button', { name: 'Синхронизировать с KudaGo' }).click();
+  await page.getByRole('button', { name: 'Обновить афишу с Кассир.ру' }).click();
   await expect(page.locator('.toast-error')).toContainText('Каталог не изменён');
   await expect(page.locator('.import-row').first()).toContainText('Сбой');
 

@@ -365,7 +365,6 @@ export const api = {
     post('/reports', { targetType, targetId, reason }),
   moderation: () => get<ModerationItem[]>('/admin/moderation'),
   moderate: (reportId: number, action: string) => put('/admin/moderation', { reportId, action }),
-  sync: () => post<ImportResult>('/admin/sync'),
   syncKassir: () => post<ImportResult>('/admin/sync/kassir'),
   syncAfisha: () => post<ImportResult>('/admin/sync/afisha'),
   duplicates: () => get<DuplicatePair[]>('/admin/duplicates'),

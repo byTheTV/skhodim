@@ -77,15 +77,6 @@ function Imports() {
     setResult(r);
     client.invalidateQueries();
   };
-  const sync = useMutation({
-    mutationFn: api.sync,
-    onSuccess: done,
-    onError: (e: Error) => {
-      toast(e.message, 'error');
-      setResult(null);
-      client.invalidateQueries({ queryKey: ['imports'] });
-    },
-  });
   const kassir = useMutation({
     mutationFn: api.syncKassir,
     onSuccess: done,
@@ -122,7 +113,7 @@ function Imports() {
     <div className="stack">
       <div className="note">
         <b>Откуда берутся события</b>
-        <p>Настоящая афиша Петербурга с Кассир.ру: обновляется сама раз в сутки или по кнопке, это занимает несколько минут. KudaGo сейчас закрыт защитой от ботов, но его сохранённую выгрузку можно загрузить файлом. Повторная загрузка обновляет события и не создаёт дублей.</p>
+        <p>Настоящая афиша Петербурга с Кассир.ру и Афиши.ру: обновляется сама каждый день в 6:00 или по кнопке, это занимает несколько минут. Сохранённую выгрузку событий можно загрузить файлом. Повторная загрузка обновляет события и не создаёт дублей.</p>
       </div>
       <div className="stack-row">
         <Button variant="primary" loading={kassir.isPending} onClick={() => kassir.mutate()}>
@@ -130,9 +121,6 @@ function Imports() {
         </Button>
         <Button variant="primary" loading={afisha.isPending} onClick={() => afisha.mutate()}>
           <CloudDownload aria-hidden /> Обновить афишу с Афиши.ру
-        </Button>
-        <Button loading={sync.isPending} onClick={() => sync.mutate()}>
-          <CloudDownload aria-hidden /> Синхронизировать с KudaGo
         </Button>
         <Button loading={upload.isPending} onClick={() => file.current?.click()}>
           <Upload aria-hidden /> Загрузить выгрузку JSON

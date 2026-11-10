@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.ifmo.skhodim.domain.ImportRun;
 import ru.ifmo.skhodim.exception.BusinessRuleException;
@@ -12,12 +11,6 @@ import ru.ifmo.skhodim.repository.CatalogRepository;
 import ru.ifmo.skhodim.repository.ImportRepository;
 
 import java.math.BigDecimal;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -29,9 +22,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * UC-12: импорт афиши с upsert по (source, external_id): KudaGo location=spb и Кассир.ру (KassirSource).
+ * UC-12: импорт афиши с upsert по (source, external_id) из разметки Кассир.ру и Афиши.ру (MarkupSource).
  * Сбой источника виден модератору и не трогает каталог (NFR-6): подмены данных нет.
- * Если сервер не может достучаться до API, события загружаются выгрузкой (importSnapshot).
+ * Сохранённую выгрузку в формате KudaGo можно загрузить файлом (importSnapshot): сам KudaGo закрыт
+ * проверкой на бота, поэтому живой синхронизации с ним нет.
  */
 @Service
 public class ImportService {
@@ -64,18 +58,6 @@ public class ImportService {
     private final CatalogRepository catalogRepository;
     private final ObjectMapper objectMapper;
     private final List<MarkupSource> markupSources;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(8))
-            .build();
-
-    @Value("${app.kudago.base-url:https://kudago.com/public-api/v1.4}")
-    private String baseUrl;
-    @Value("${app.kudago.location:spb}")
-    private String location;
-    @Value("${app.kudago.page-size:20}")
-    private int pageSize;
-    @Value("${app.kudago.max-pages:2}")
-    private int maxPages;
 
     public ImportService(
             ImportRepository repository,
@@ -102,21 +84,6 @@ public class ImportService {
 
     public void finish(long runId, String status, int processed, int errors) {
         repository.finishRun(runId, status, processed, errors);
-    }
-
-    public Map<String, Object> syncKudago() {
-        long sourceId = kudagoSourceId();
-        long runId = startRun(sourceId);
-        JsonNode results;
-        try {
-            results = fetchResults();
-        } catch (Exception e) {
-            log.warn("KudaGo sync failed: {}", e.getMessage());
-            repository.logError(runId, null, "SYNC", String.valueOf(e.getMessage()));
-            finish(runId, ImportRun.FAILED, 0, 1);
-            throw new BusinessRuleException("KudaGo sync failed: " + e.getMessage(), e);
-        }
-        return upsertAll(runId, sourceId, results, "kudago");
     }
 
     public Map<String, Object> syncKassir() {
@@ -238,39 +205,6 @@ public class ImportService {
         body.put("merged", merged);
         body.put("duplicates", queued);
         return body;
-    }
-
-    private JsonNode fetchResults() throws Exception {
-        com.fasterxml.jackson.databind.node.ArrayNode collected = objectMapper.createArrayNode();
-        long actualSince = Instant.now().minus(Duration.ofDays(1)).getEpochSecond();
-        String next = baseUrl + "/events/?location=" + location
-                + "&page_size=" + pageSize
-                + "&actual_since=" + actualSince
-                + "&expand=place"
-                + "&fields=id,title,description,body_text,dates,place,categories,tags,price,is_free,age_restriction,images,site_url";
-        for (int page = 0; page < maxPages && next != null; page++) {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(next))
-                    .timeout(Duration.ofSeconds(12))
-                    .header("Accept", "application/json")
-                    .header("User-Agent", "skhodim-course/1.0")
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() >= 400) {
-                throw new IllegalStateException("KudaGo returned HTTP " + response.statusCode());
-            }
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode results = root.path("results");
-            if (results.isArray()) {
-                collected.addAll((com.fasterxml.jackson.databind.node.ArrayNode) results);
-            }
-            JsonNode nextNode = root.get("next");
-            next = nextNode == null || nextNode.isNull() ? null : nextNode.asText();
-        }
-        if (collected.isEmpty()) {
-            throw new IllegalStateException("KudaGo returned no events");
-        }
-        return collected;
     }
 
     private void upsertEvent(long sourceId, JsonNode event) {

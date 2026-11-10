@@ -54,8 +54,6 @@ final class ApiMessages {
         RULES.put("Duplicate pair is not pending", "Эту пару уже рассмотрели");
         RULES.put("Keep event must belong to the pair", "Оставить можно только одно из двух событий пары");
         RULES.put("Kassir sync failed", "Не удалось получить афишу с Кассир.ру. Каталог не изменён");
-        RULES.put("KudaGo returned HTTP 403", "KudaGo отклонил запрос (HTTP 403). Каталог не изменён");
-        RULES.put("KudaGo sync failed", "Не удалось получить события из KudaGo. Каталог не изменён");
         RULES.put("Snapshot", "Файл не похож на выгрузку событий KudaGo");
         RULES.put("No session for event", "У события нет доступных сеансов");
         RULES.put("Twin not found", "Двойник пока не найден: поставьте больше лайков");

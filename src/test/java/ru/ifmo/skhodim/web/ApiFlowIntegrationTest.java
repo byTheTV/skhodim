@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(
         classes = SkhodimApplication.class,
-        properties = {"app.kudago.base-url=http://127.0.0.1:1/unreachable", "app.kassir.base-url=http://127.0.0.1:1", "app.kassir.pause-ms=0", "app.afisha.base-url=http://127.0.0.1:1", "app.afisha.pause-ms=0"}
+        properties = {"app.kassir.base-url=http://127.0.0.1:1", "app.kassir.pause-ms=0", "app.afisha.base-url=http://127.0.0.1:1", "app.afisha.pause-ms=0"}
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -394,9 +394,9 @@ class ApiFlowIntegrationTest {
     @Test
     void unreachableSourceFailsVisiblyAndKeepsCatalog() throws Exception {
         Integer before = jdbc.queryForObject("SELECT count(*) FROM event", Integer.class);
-        mvc.perform(auth(post("/api/v1/admin/sync"), login(100)))
+        mvc.perform(auth(post("/api/v1/admin/sync/afisha"), login(100)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Не удалось получить события из KudaGo. Каталог не изменён"));
+                .andExpect(jsonPath("$.error").value("Не удалось получить афишу с Афиши.ру. Каталог не изменён"));
         assertEquals(before, jdbc.queryForObject("SELECT count(*) FROM event", Integer.class));
         assertEquals("FAILED", jdbc.queryForObject(
                 "SELECT status FROM import_run ORDER BY id DESC LIMIT 1", String.class));
