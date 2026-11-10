@@ -1,8 +1,58 @@
-# ИС «Сходим»
+<div align="center">
 
-Афиша Петербурга и компания на вечер: смахивай события, отмечай, куда хочешь пойти, находи тех, кто идёт туда же, и договаривайся в чате. Курсовая работа по дисциплине «Информационные системы», ИТМО.
+# Сходим!
 
-**Сайт:** <https://hearty-heron-4014.a.tuna.free>. Он работает на helios. Сначала Tuna показывает свою страницу-предупреждение, её нужно пропустить.
+**Афиша Петербурга и компания на вечер**
+
+Смахивай события, отмечай, куда хочешь пойти, находи тех, кто идёт туда же, и договаривайся в чате.
+
+[![CI/CD](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml/badge.svg?branch=stage-4)](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml)
+![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 3.3](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pl%2Fpgsql-4169E1?logo=postgresql&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Playwright](https://img.shields.io/badge/E2E-Playwright-2EAD33?logo=playwright&logoColor=white)
+
+**[Открыть сайт](https://hearty-heron-4014.a.tuna.free)** · **[Swagger](https://hearty-heron-4014.a.tuna.free/swagger-ui.html)** · **[Подробная документация](docs/PROJECT.md)** · **[Итоговый отчёт](Skhodim_Final_Report.docx)**
+
+Курсовая работа по дисциплине «Информационные системы», ИТМО
+
+<img src="docs/screens/d-swipe.png" alt="Лента на компьютере: карточка события, кнопки «Пропуск» и «Лайк», следующие события" width="900">
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screens/m-swipe.png" alt="Лента на телефоне" width="190"><br><sub>Свайп</sub></td>
+    <td align="center"><img src="docs/screens/m-event.png" alt="Карточка события" width="190"><br><sub>Событие и билеты</sub></td>
+    <td align="center"><img src="docs/screens/m-chat.png" alt="Чат после принятого приглашения" width="190"><br><sub>Чат с компанией</sub></td>
+    <td align="center"><img src="docs/screens/m-taste.png" alt="Пластинка вкуса" width="190"><br><sub>Пластинка вкуса</sub></td>
+  </tr>
+</table>
+
+<details>
+<summary><b>Ещё экраны</b></summary>
+<br>
+
+<img src="docs/screens/d-social-dark.png" alt="Соцсеть в тёмной теме: двойник вкуса и похожие люди" width="900">
+<p><sub>Соцсеть в тёмной теме: двойник вкуса, похожие люди, обсуждения</sub></p>
+
+<img src="docs/screens/d-duplicates.png" alt="Модерация: пара возможных дублей с Кассир.ру и Афиши.ру" width="900">
+<p><sub>Модерация: одно событие с Кассир.ру и Афиши.ру, модератор решает, склеить ли</sub></p>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screens/m-going.png" alt="Кто ещё идёт" width="190"><br><sub>Кто ещё идёт</sub></td>
+    <td align="center"><img src="docs/screens/m-person.png" alt="Профиль человека" width="190"><br><sub>Профиль и приглашение</sub></td>
+    <td align="center"><img src="docs/screens/m-lists.png" alt="Список планов и лайков" width="190"><br><sub>Список</sub></td>
+    <td align="center"><img src="docs/screens/m-filters.png" alt="Фильтры поиска" width="190"><br><sub>Фильтры</sub></td>
+  </tr>
+</table>
+
+</details>
+
+</div>
+
+> [!NOTE]
+> Сайт работает на helios и открыт наружу через туннель Tuna. Перед сайтом Tuna показывает свою страницу-предупреждение, её нужно пропустить. Демо-вход: `demo1@example.org` / `Demo12345!`.
 
 Подробно о каждой части (база, бэкенд, источники событий, склейка дублей, интерфейс, тесты, выкладка): [docs/PROJECT.md](docs/PROJECT.md). Пояснения к SQL-скриптам: [sql/README.md](sql/README.md).
 
@@ -179,7 +229,8 @@ mvn test -Dskip.frontend=true
 npm run e2e --prefix frontend
 ```
 
-**`SkhodimDatabaseTest` стирает рабочие данные на helios.** Это проверка БД этапа 2: тест заново заливает на helios скрипты `91` и `01`…`04`, и все импортированные события, пользователи и переписка пропадут. Поэтому он исключён из обычного запуска. Запускать только осознанно и после `db.sh backup`:
+> [!CAUTION]
+> **`SkhodimDatabaseTest` стирает рабочие данные на helios.** Это проверка БД этапа 2: тест заново заливает на helios скрипты `91` и `01`…`04`, и все импортированные события, пользователи и переписка пропадут. Поэтому он исключён из обычного запуска. Запускать только осознанно и после `db.sh backup`:
 
 ```bash
 mvn test -Dtest=SkhodimDatabaseTest
@@ -195,7 +246,8 @@ mvn test -Dtest=SkhodimDatabaseTest
 - база `studs` на хосте `pg`, своя схема пользователя;
 - остальное содержимое домашней папки и личной схемы скрипты не трогают.
 
-`sql/90_drop_schema.sql` на helios не запускать: он удалит всю личную схему вместе с чужими лабораторными таблицами. `00_create_database.sql` там тоже не нужен: прав на создание базы нет.
+> [!WARNING]
+> `sql/90_drop_schema.sql` на helios не запускать: он удалит всю личную схему вместе с чужими лабораторными таблицами. `00_create_database.sql` там тоже не нужен: прав на создание базы нет.
 
 Один раз настройте вход по ключу. Домашняя папка не должна быть доступна на запись другим, иначе SSH не примет ключ:
 
