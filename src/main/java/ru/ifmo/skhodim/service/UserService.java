@@ -70,11 +70,31 @@ public class UserService {
 
     @Transactional
     public void updateProfile(long userId, String nickname, String avatarKey, String metro, List<Long> categoryIds) {
+        UserProfile current = getProfile(userId);
+        updateProfile(userId, nickname, avatarKey, metro, current.displayName(), current.bio(),
+                current.notificationsEnabled(), categoryIds);
+    }
+
+    @Transactional
+    public void updateProfile(
+            long userId, String nickname, String avatarKey, String metro,
+            String displayName, String bio, boolean notificationsEnabled, List<Long> categoryIds
+    ) {
         getProfile(userId);
         if (nickname == null || nickname.isBlank()) {
             throw new BusinessRuleException("Nickname is required");
         }
-        userRepository.updateProfile(userId, nickname.trim(), avatarKey, metro);
+        if (nickname.trim().length() > 40) {
+            throw new BusinessRuleException("Nickname is too long");
+        }
+        if (displayName != null && displayName.trim().length() > 60) {
+            throw new BusinessRuleException("Display name is too long");
+        }
+        if (bio != null && bio.trim().length() > 160) {
+            throw new BusinessRuleException("Bio is too long");
+        }
+        userRepository.updateProfile(userId, nickname.trim(), avatarKey, metro,
+                blankToNull(displayName), blankToNull(bio), notificationsEnabled);
         if (categoryIds != null) {
             validateInterests(categoryIds);
             userRepository.replaceInterests(userId, categoryIds);
@@ -91,6 +111,10 @@ public class UserService {
 
     public void unban(long userId) {
         userRepository.setBanned(userId, false);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static void validateInterests(List<Long> categoryIds) {

@@ -1,173 +1,415 @@
-# ИС «Сходим» — курсовая работа
+<div align="center">
 
-Этапы 1–2 (предметная область, прецеденты, ER-модель, БД PostgreSQL) — в
-`sql/` и отчёте этапа 2. Этап 3: уровень хранения и бизнес-логики (Spring Boot,
-JdbcTemplate поверх pl/pgsql). REST `/api/v1` и Swagger — для проверки на helios.
-Отчёт этапа 3: `docs/generate_report.py` → `Skhodim_Etap_3_Report.docx`.
+# Сходим!
 
-## Структура
+**Афиша Петербурга и компания на вечер**
 
-- `sql/` — схема БД, pl/pgsql-функции/процедуры, индексы, сиды.
-- `src/main/java/ru/ifmo/skhodim/domain` — доменные record-классы.
-- `src/main/java/ru/ifmo/skhodim/repository` — уровень хранения: JdbcTemplate + функции БД.
-- `src/main/java/ru/ifmo/skhodim/service` — бизнес-логика.
-- `src/main/java/ru/ifmo/skhodim/web` — REST `/api/v1` и Swagger.
-- `docs/architecture.puml` — диаграмма классов общей архитектуры.
+Смахивай события, отмечай, куда хочешь пойти, находи тех, кто идёт туда же, и договаривайся в чате.
 
-Демо-учётки после посева `04_seed.sql`:
+[![CI/CD](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml/badge.svg?branch=stage-4)](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml)
+![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 3.3](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pl%2Fpgsql-4169E1?logo=postgresql&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Playwright](https://img.shields.io/badge/E2E-Playwright-2EAD33?logo=playwright&logoColor=white)
 
-| Роль | Email | Пароль |
-|------|-------|--------|
-| Пользователь | `demo1@example.org` | `Demo12345!` |
-| Модератор | `demo100@example.org` | `Demo12345!` |
+**[Открыть сайт](https://hearty-heron-4014.a.tuna.free)** · **[Swagger](https://hearty-heron-4014.a.tuna.free/swagger-ui.html)** · **[Подробная документация](docs/PROJECT.md)** · **[Итоговый отчёт](Skhodim_Final_Report.docx)**
 
----
+Курсовая работа по дисциплине «Информационные системы», ИТМО
 
-## Запуск на helios (основной сценарий)
+<img src="docs/screens/d-swipe.png" alt="Лента на компьютере: карточка события, кнопки «Пропуск» и «Лайк», следующие события" width="900">
 
-Приложение должно работать **на helios**: JDBC ходит на хост `pg`, с вашего ПК он
-недоступен. HTTP слушает только `127.0.0.1:18080` (порт 8080 занят GlassFish).
-Снаружи заходим SSH-туннелем.
+<table>
+  <tr>
+    <td align="center"><img src="docs/screens/m-swipe.png" alt="Лента на телефоне" width="190"><br><sub>Свайп</sub></td>
+    <td align="center"><img src="docs/screens/m-event.png" alt="Карточка события" width="190"><br><sub>Событие и билеты</sub></td>
+    <td align="center"><img src="docs/screens/m-chat.png" alt="Чат после принятого приглашения" width="190"><br><sub>Чат с компанией</sub></td>
+    <td align="center"><img src="docs/screens/m-taste.png" alt="Пластинка вкуса" width="190"><br><sub>Пластинка вкуса</sub></td>
+  </tr>
+</table>
 
-### Что умирает, когда закрываешь терминал
+<details>
+<summary><b>Ещё экраны</b></summary>
+<br>
 
-Два разных процесса:
+<img src="docs/screens/d-social-dark.png" alt="Соцсеть в тёмной теме: двойник вкуса и похожие люди" width="900">
+<p><sub>Соцсеть в тёмной теме: двойник вкуса, похожие люди, обсуждения</sub></p>
 
-| Что | Где живёт | Закрыл терминал |
-|-----|-----------|-----------------|
-| `java -jar skhodim.jar` | helios, `nohup` | **не умирает** (пока helios не прибьёт процесс) |
-| SSH-туннель `-L 18080` | твой ПК | **умирает**. Swagger на localhost пропадёт |
+<img src="docs/screens/d-duplicates.png" alt="Модерация: пара возможных дублей с Кассир.ру и Афиши.ру" width="900">
+<p><sub>Модерация: одно событие с Кассир.ру и Афиши.ру, модератор решает, склеить ли</sub></p>
 
-Поэтому почти всегда достаточно заново открыть туннель. JAR пересобирать и
-SQL заливать не нужно.
+<table>
+  <tr>
+    <td align="center"><img src="docs/screens/m-going.png" alt="Кто ещё идёт" width="190"><br><sub>Кто ещё идёт</sub></td>
+    <td align="center"><img src="docs/screens/m-person.png" alt="Профиль человека" width="190"><br><sub>Профиль и приглашение</sub></td>
+    <td align="center"><img src="docs/screens/m-lists.png" alt="Список планов и лайков" width="190"><br><sub>Список</sub></td>
+    <td align="center"><img src="docs/screens/m-filters.png" alt="Фильтры поиска" width="190"><br><sub>Фильтры</sub></td>
+  </tr>
+</table>
 
-### Каждый раз, когда закрыл терминал / перезагрузил ноут
+</details>
 
-**1. Проверь, жив ли JAR** (можно в любом ssh-окне, его потом закрыть):
+</div>
 
-```bash
-ssh -p 2222 s467667@helios.se.ifmo.ru
-curl -sS http://127.0.0.1:18080/api/v1/health
-# ожидается: {"status":"ok","schema":"s467667"}
-pgrep -af skhodim.jar
-```
+> [!NOTE]
+> Сайт работает на helios и открыт наружу через туннель Tuna. Перед сайтом Tuna показывает свою страницу-предупреждение, её нужно пропустить. Демо-вход: `demo1@example.org` / `Demo12345!`.
 
-Если health отвечает — Java не трогай, только туннель (шаг 2).
+Подробно о каждой части (база, бэкенд, источники событий, склейка дублей, интерфейс, тесты, выкладка): [docs/PROJECT.md](docs/PROJECT.md). Пояснения к SQL-скриптам: [sql/README.md](sql/README.md).
 
-Если `Connection refused` / пустой `pgrep` — перезапусти JAR:
+## Этап 4: что сдаётся
 
-```bash
-cd ~/skhodim-etap2
-pkill -f skhodim.jar || true
-export SKHODIM_SCHEMA=s467667
-export SKHODIM_DB_PASSWORD=$(awk -F: '{print $5; exit}' ~/.pgpass)
-# без -Xmx256m JVM на helios падает (пытается выделить десятки ГБ)
-nohup java -Xms64m -Xmx256m -Djava.awt.headless=true \
-  -jar skhodim.jar --spring.profiles.active=helios --server.port=18080 \
-  > skhodim.log 2>&1 &
-sleep 8
-tail -n 20 skhodim.log
-# нужна строка: Started SkhodimApplication
-curl -sS http://127.0.0.1:18080/api/v1/health
-```
+| Что требуется | Где в проекте |
+|---|---|
+| Уровень представления: готовый веб-интерфейс | `frontend/`: React, TypeScript, Vite; вёрстка под телефон и компьютер |
+| Интеграция с бизнес-логикой и БД этапов 2–3 | REST `/api/v1` (52 метода) в `src/main/java/.../web`; новые запросы экранов лежат в функциях БД `sql/08_stage4.sql` и `sql/11_sources.sql` |
+| Работа на helios | Выкладка `deploy/`, публичный адрес через туннель Tuna, CI/CD в `.github/workflows/ci.yml` |
+| Итоговый отчёт | `Skhodim_Final_Report.docx`, собирается скриптом `docs/generate_final_report.py` |
+| Презентация | В репозиторий не входит, делается отдельно |
 
-Остановка: `pkill -f skhodim.jar`. Лог: `~/skhodim-etap2/skhodim.log`.
+Сверх обязательного: настоящая афиша Петербурга с Кассир.ру и Афиши.ру с ежедневным обновлением, склейка одинаковых событий из разных источников, карточка для сторис и 17 браузерных тестов.
 
-**2. Туннель на своём ПК** — отдельный терминал, **не закрывать**, пока смотришь Swagger:
+### Все этапы
 
-```bash
-ssh -L 18080:127.0.0.1:18080 -p 2222 s467667@helios.se.ifmo.ru
-```
+| Этап | Содержание | Отчёт и код |
+|---|---|---|
+| 1 | Описание системы, требования FR-1…FR-21, прецеденты | `Otchet_Etap1_Skhodim.docx` |
+| 2 | ER-модель, 22 таблицы, целостность, pl/pgsql, индексы | `Skhodim_Etap_2_DB_full.docx`, `sql/01`…`sql/06` |
+| 3 | Уровни хранения и бизнес-логики на Spring Boot, все запросы через функции БД, запуск на helios | `Skhodim_Etap_3_Report.docx` (`docs/generate_report.py`), `src/main/java`, диаграмма классов `docs/architecture.png`, [docs/HELIOS_STAGE3.md](docs/HELIOS_STAGE3.md) |
+| 4 | Интерфейс, интеграция, импорт настоящей афиши, выкладка | `Skhodim_Final_Report.docx`, `frontend/`, `sql/08_stage4.sql`, `sql/11_sources.sql`, `deploy/` |
 
-Сессия должна остаться открытой (просто висит). Если окно закрылось — туннель
-умер, команду повторить. В браузере:
+Где реализовано каждое требование и чем оно проверено: [docs/PROJECT.md, раздел 9](docs/PROJECT.md#9-требования-и-их-реализация).
 
-1. Жив ли сервис: <http://localhost:18080/api/v1/health>
-2. Swagger UI: <http://localhost:18080/swagger-ui.html>
-3. `POST /api/v1/auth/login` — тело уже заполнено: `demo1@example.org` / `Demo12345!`
-4. **Authorize** → вставить `token` из ответа (без слова Bearer)
-5. Дальше любые методы. Гость без токена: health, поиск, карточка события.
-   Админка — логин `demo100@example.org`.
+## Как посмотреть
 
-Готовые id в шапке Swagger: события `1` и `10`, сеансы `19`/`20`, диалог `1`.
+### Демо-учётки
 
-Если `localhost:18080` не открывается, а на helios `curl` к health работает —
-проблема только в туннеле (закрыт, занят порт, опечатка в `-L`).
+Создаются скриптом `09_base_data.sql`. Люди вымышленные, пароль у всех `Demo12345!`.
 
-### 1. База в личной схеме (один раз)
+| Роль | Email |
+|------|-------|
+| Участник | `demo1@example.org` … `demo9@example.org` |
+| Модератор | `demo100@example.org` |
 
-На helios **не** создают отдельную БД и **не** запускают `sql/90_drop_schema.sql`
-(снесёт всю личную схему). Нужны скрипты в `~/skhodim-etap2/sql/`.
+Без входа доступны лента, поиск и карточка события. Модератору открыт раздел «Модерация»: жалобы, импорт афиши, дубли.
 
-```bash
-ssh -p 2222 s467667@helios.se.ifmo.ru
-cd ~/skhodim-etap2
-export PGCLIENTENCODING=UTF8
-APP_SCHEMA=s467667
+### Экраны
 
-# полный пересоздать объекты проекта (чужие таблицы схемы не трогает):
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/91_reset_objects.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/01_schema.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/02_logic.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/03_queries_indexes.sql
-psql -h pg -d studs -v ON_ERROR_STOP=1 -v app_schema=$APP_SCHEMA -f sql/04_seed.sql
+| Адрес | Что там |
+|---|---|
+| `/` | Лента: свайп вправо — нравится, влево — пропустить |
+| `/search` | Поиск с фильтрами: когда, метро, интересы, только бесплатные |
+| `/events/:id` | Карточка: сеансы, «где купить», «Хочу пойти», отзывы, сторис |
+| `/events/:id/going`, `/events/:id/comments` | Кто ещё идёт, комментарии |
+| `/list` | Активные планы, лайки и прошедшие события |
+| `/social`, `/users/:id` | Похожие люди, двойник вкуса, профиль человека и приглашение пойти вместе |
+| `/invites`, `/chats` | Заявки и чат после принятия |
+| `/notifications` | Уведомления |
+| `/profile`, `/profile/edit`, `/profile/taste` | Профиль, интересы, пластинка вкуса |
+| `/admin` | Модерация, импорт, дубли (только модератор) |
+| `/login`, `/register` | Вход и регистрация в два шага |
 
-psql -h pg -d studs -c "SET search_path TO s467667, public; SELECT count(*) FROM app_user;"
-# ожидается 100
-```
+### Swagger
 
-Если схема уже залита, достаточно проверки `count(*)`. Для накатки только новых
-функций/колонок: `sql/07_migrate_etap1_api.sql`, затем снова `03_queries_indexes.sql`.
+Swagger открыт по адресу `/swagger-ui.html` на том же хосте, что и сайт: <https://hearty-heron-4014.a.tuna.free/swagger-ui.html>. Запросы из «Try it out» уходят на тот же хост.
 
-### 2. Сборка JAR (на своём ПК)
+1. Проверьте, что сервис жив: `GET /api/v1/health`, ответ `{"status":"ok","schema":"s467667"}`.
+2. Вызовите `POST /api/v1/auth/login`. Тело уже заполнено учёткой `demo1@example.org`, для модерации подставьте `demo100@example.org`.
+3. Нажмите **Authorize** и вставьте поле `token` из ответа без слова `Bearer`.
+4. После этого доступны все методы своей роли.
 
-```bash
-mvn -DskipTests package
-# артефакт: target/skhodim.jar
-scp -P 2222 target/skhodim.jar s467667@helios.se.ifmo.ru:~/skhodim-etap2/
-```
+Коллекция Postman: `docs/postman/Skhodim-Helios.postman_collection.json`. Её переменная `baseUrl` указывает на `http://localhost:28467`, для публичного адреса её нужно заменить.
 
-### 3. Старт JAR на helios (если health молчит)
+## Состав
 
-См. блок «Каждый раз, когда закрыл терминал» выше. Коротко: `pkill` → `nohup java -Xmx256m … &`.
-
-Коллекция Postman: `docs/postman/Skhodim-Helios.postman_collection.json`.
-
----
+| Папка | Что внутри |
+|-------|------------|
+| `frontend/` | React, TypeScript, Vite; браузерные тесты в `frontend/e2e` |
+| `src/main/java/.../web` | REST `/api/v1`, Swagger, отдача собранного React |
+| `src/main/java/.../service` | Бизнес-логика, импорт афиши |
+| `src/main/java/.../repository` | Уровень хранения: JdbcTemplate поверх функций pl/pgsql |
+| `src/main/java/.../security` | Вход по JWT, роли |
+| `src/main/java/.../scheduler` | Просрочка заявок раз в минуту и обновление афиши раз в сутки |
+| `sql/` | Схема, триггеры, функции, индексы, данные |
+| `deploy/` | Выкладка на helios с откатом, работа с БД, туннель |
+| `.github/workflows/` | CI/CD |
+| `docs/` | Подробная документация, диаграмма классов, скриншоты, генераторы отчётов, Postman |
 
 ## Запуск локально
 
-Нужна отдельная БД `skhodim_course` (см. `sql/README.md`):
+Нужны Java 17+, PostgreSQL и Maven. Node.js ставить не обязательно: Maven скачает его сам.
 
 ```bash
 psql -d postgres -v db_name=skhodim_course -f sql/00_create_database.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/01_schema.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/02_logic.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/03_queries_indexes.sql
-psql -d skhodim_course -v app_schema=skhodim -f sql/04_seed.sql
-
-export SKHODIM_DB_PASSWORD=postgres
-mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
-
-Локально порт **8080**: <http://localhost:8080/swagger-ui.html>.
-
-Тесты:
 
 ```bash
-mvn test -Dtest=SkhodimServiceIntegrationTest   # локальная БД
-mvn test -Dtest=SkhodimDatabaseTest            # helios по SSH, нужен helios.local.properties
+for f in 01_schema 02_logic 03_queries_indexes 08_stage4 11_sources 09_base_data; do psql -d skhodim_course -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql; done
 ```
 
-`src/test/resources/helios.local.properties` в git не коммитится.
-
----
-
-## Генерация отчёта этапа 3
-
-```
-docs/generate_report.py   # pip install python-docx
+```bash
+mvn -DskipTests package
 ```
 
-Результат — `Skhodim_Etap_3_Report.docx`. Подробности по БД на helios:
-[docs/HELIOS_STAGE3.md](docs/HELIOS_STAGE3.md).
+```bash
+SKHODIM_DB_PASSWORD=postgres java -jar target/skhodim.jar --spring.profiles.active=local
+```
+
+Приложение откроется на <http://localhost:8080>, Swagger на <http://localhost:8080/swagger-ui.html>. В PowerShell пароль задаётся так: `$env:SKHODIM_DB_PASSWORD="postgres"`.
+
+Каталог после этого пуст. Войдите как `demo100@example.org` и в разделе «Модерация → Импорт афиши» нажмите «Обновить афишу с Кассир.ру» и «Обновить афишу с Афиши.ру».
+
+Для разработки интерфейса с мгновенным обновлением страницы запустите сервер как выше и затем:
+
+```bash
+npm run dev --prefix frontend
+```
+
+## Откуда берутся события
+
+В рабочей базе нет выдуманных событий: каталог заполняется только импортом.
+
+- **Кассир.ру и Афиша.ру, основные источники.** Импорт запускается двумя способами:
+  - кнопками «Обновить афишу с Кассир.ру» и «Обновить афишу с Афиши.ру» в разделе «Модерация → Импорт афиши»;
+  - автоматически раз в сутки в 06:00 по Москве. Расписание задаётся в `app.catalog.refresh-cron`, значение `-` его отключает.
+
+  Кассир загружается около трёх минут, Афиша.ру около полутора. На helios в ноябре 2026 года с Кассира пришло 914 событий, с Афиши.ру 1135. 240 событий нашлись на обоих сайтах и склеились, в каталоге около 1800 событий с постерами, ценами и ссылками на покупку.
+- **Выгрузка KudaGo.** JSON-ответ `GET /events/` загружается файлом там же. Повторная загрузка обновляет события без дублей. Так браузерные тесты получают свои события. Прямой импорт из API KudaGo убран: сайт закрыт проверкой на бота и отвечает автоматическим запросам 403.
+- **Timepad** требует токен и пока не подключён.
+
+Одно и то же событие часто есть на обоих сайтах. Оно хранится один раз:
+- данные каждого источника лежат в `event_link`;
+- у события берутся минимальная цена, настоящее описание и лучший постер;
+- на странице видно, где купить и почём.
+
+После каждого импорта функция `resolve_duplicates` (`sql/11_sources.sql`) склеивает уверенные дубли. Уверенный дубль — это тот же день и время, та же площадка и то же название без служебных и жанровых слов.
+
+Сомнительные пары модератор разбирает во вкладке «Модерация → Дубли»: оставляет одно событие или помечает пару как разные события. При склейке лайки, планы, комментарии и жалобы переходят к оставшемуся событию.
+
+У Кассир.ру и Афиши.ру нет открытого API для такого использования. Импорт читает разметку schema.org, которую сайты публикуют на своих страницах для поисковиков:
+- соблюдаются правила `robots.txt`;
+- между запросами выдерживается пауза;
+- клиент представляется честно и не обходит защиту от ботов.
+
+Условия использования сайтов проверены только поиском по ключевым словам. Для проекта вне учебных целей использование данных нужно отдельно согласовать с Кассир.ру и Афишей.ру. Постеры загружаются браузером напрямую с их CDN и принадлежат правообладателям.
+
+После появления событий можно оживить демо-учётки: лайки, планы, заявки и чат.
+
+```bash
+psql -d skhodim_course -v app_schema=skhodim -f sql/10_demo_activity.sql
+```
+
+## Тесты
+
+| Уровень | Где | Тестов |
+|---|---|---|
+| SQL-проверки целостности | `sql/05_tests.sql` | — |
+| Сервисы этапа 3 | `SkhodimServiceIntegrationTest` | 14 |
+| REST API | `ApiFlowIntegrationTest` | 23 |
+| Разбор Кассира и Афиши.ру | `KassirSourceTest`, `AfishaSourceTest` | 14 |
+| Склейка дублей | `DuplicateImportIntegrationTest` | 5 |
+| Браузер | `frontend/e2e/app.spec.ts` | 17 |
+
+Тесты бэкенда работают на отдельной базе `skhodim_test`. Она создаётся один раз:
+
+```bash
+psql -d postgres -c "CREATE DATABASE skhodim_test ENCODING 'UTF8' TEMPLATE template0"
+```
+
+```bash
+for f in 01_schema 02_logic 03_queries_indexes 04_seed 08_stage4 11_sources; do psql -d skhodim_test -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql; done
+```
+
+```bash
+mvn test -Dskip.frontend=true
+```
+
+Браузерные тесты сами готовят базу `skhodim_e2e` и запускают приложение из собранного JAR на порту 18090:
+
+```bash
+npm run e2e --prefix frontend
+```
+
+> [!CAUTION]
+> **`SkhodimDatabaseTest` стирает рабочие данные на helios.** Это проверка БД этапа 2: тест заново заливает на helios скрипты `91` и `01`…`04`, и все импортированные события, пользователи и переписка пропадут. Поэтому он исключён из обычного запуска. Запускать только осознанно и после `db.sh backup`:
+
+```bash
+mvn test -Dtest=SkhodimDatabaseTest
+```
+
+Параметры подключения для него лежат в `src/test/resources/helios.local.properties`: `host`, `port`, `user`, `password`, `schema`, `database`, `pgHost`. Файл в git не коммитится.
+
+## Выкладка на helios
+
+Как устроено на helios:
+- приложение живёт в отдельной папке `~/skhodim` и слушает только `127.0.0.1:28467`;
+- порты 8080 и 18080 на helios заняты другими пользователями, свой порт можно задать строкой `SERVER_PORT=...` в `~/skhodim/shared/env`;
+- каждую ночь в 05:00 helios завершает процессы студентов, после этого сайт поднимает сторож (см. «Сторож»);
+- база `studs` на хосте `pg`, своя схема пользователя;
+- остальное содержимое домашней папки и личной схемы скрипты не трогают.
+
+> [!WARNING]
+> `sql/90_drop_schema.sql` на helios не запускать: он удалит всю личную схему вместе с чужими лабораторными таблицами. `00_create_database.sql` там тоже не нужен: прав на создание базы нет.
+
+Один раз настройте вход по ключу. Домашняя папка не должна быть доступна на запись другим, иначе SSH не примет ключ:
+
+```bash
+ssh -p 2222 s467667@helios.se.ifmo.ru 'chmod go-w ~'
+```
+
+Обычная выкладка выполняется одной командой:
+
+```bash
+bash deploy/deploy.sh
+```
+
+Она собирает JAR и загружает его вместе с SQL и скриптами в `~/skhodim/incoming`. Затем применяет миграции `08` и `11`, перезапускает приложение и проверяет `/api/v1/health`. Если новая версия не поднялась, автоматически возвращается прошлая. В конце поднимается туннель, если он не работает.
+
+### Работа с БД на сервере
+
+Команды выполняются из `~/skhodim/incoming`, куда `deploy.sh` кладёт скрипты:
+
+```bash
+cd ~/skhodim/incoming
+```
+
+```bash
+bash deploy/db.sh check
+```
+
+```bash
+bash deploy/db.sh backup
+```
+
+```bash
+bash deploy/db.sh reset
+```
+
+- `check` показывает таблицы проекта и остальные таблицы схемы.
+- `backup` сохраняет копию таблиц проекта в `~/skhodim/backups`.
+- `reset` пересоздаёт только таблицы проекта. Перед этим он покажет список, спросит подтверждение и сохранит копию.
+- `migrate` применяет `08` и `11`.
+- `activity` добавляет активность демо-учёток.
+
+Посмотреть данные вручную:
+
+```bash
+psql -h pg -d studs -c "SET search_path TO s467667, public; SELECT count(*) FROM event;"
+```
+
+### Публичный адрес
+
+Публичный адрес даёт туннель [Tuna](https://tuna.am), запущенный на самом helios. Другие сервисы не подходят: helios выпускает наружу только порт 443, а ngrok не принимает подключения с российских IP. `deploy.sh` после каждой выкладки поднимает туннель, если тот не работает.
+
+Туннель открывает порт всему интернету, поэтому `tunnel.sh start` сначала проверяет, что на порту отвечает именно «Сходим» с нашей схемой. Если там чужое приложение, туннель не поднимается и останавливается.
+
+```bash
+ssh -p 2222 s467667@helios.se.ifmo.ru 'sh ~/skhodim/incoming/deploy/tunnel.sh status'
+```
+
+```bash
+ssh -p 2222 s467667@helios.se.ifmo.ru 'sh ~/skhodim/incoming/deploy/tunnel.sh start'
+```
+
+Туннель один раз настраивается вручную. FreeBSD-сборка `tuna` с проверенной подписью GPG лежит в `~/skhodim/tunnel/tuna/`, вход выполнен командой `tuna login --no-browser --insecure-storage`. Журнал туннеля: `~/skhodim/tunnel/tuna.log`.
+
+Без туннеля сайт можно открыть через SSH. Окно с этой командой держите открытым:
+
+```bash
+ssh -L 28467:127.0.0.1:28467 -p 2222 s467667@helios.se.ifmo.ru
+```
+
+Тогда приложение открывается на <http://localhost:28467>, Swagger на <http://localhost:28467/swagger-ui.html>.
+
+### Если сайт не открывается
+
+Здесь три независимых процесса:
+
+| Что | Где работает | Когда пропадает |
+|-----|--------------|-----------------|
+| Приложение `skhodim.jar` | helios, в фоне | Каждую ночь в 05:00 и при перезагрузке helios. Сторож поднимает его в течение 15 минут |
+| Туннель Tuna | helios, под присмотром `daemon` | Так же; если упадёт сама `tuna`, `daemon` её перезапустит |
+| SSH-туннель `-L 28467` | ваш компьютер | Как только закрыто окно терминала |
+
+1. Проверьте приложение на самом helios:
+
+   ```bash
+   ssh -p 2222 s467667@helios.se.ifmo.ru 'curl -sS http://127.0.0.1:28467/api/v1/health'
+   ```
+
+   Если ответ `{"status":"ok",...}`, приложение работает, а проблема в туннеле: проверьте `tunnel.sh status` или заново откройте SSH-туннель.
+2. Если ответа нет, запустите сторож вручную. Он поднимет последнюю выложенную версию без новой сборки и туннель:
+
+   ```bash
+   ssh -p 2222 s467667@helios.se.ifmo.ru 'sh ~/skhodim/incoming/deploy/keepalive.sh'
+   ```
+
+3. Журнал приложения лежит в `~/skhodim/shared/app.log`. При успешном старте в нём есть строка `Started SkhodimApplication`.
+
+Частые ошибки:
+- **JVM падает сразу при старте.** Без `-Xmx` Java на helios пытается выделить десятки гигабайт. `release.sh` уже запускает её с `-Xms64m -Xmx256m`. Если запускаете JAR вручную, укажите эти флаги тоже.
+- **`Connection refused` к `pg`.** Приложение с профилем `helios` нужно запускать на самом helios: с вашего компьютера хост `pg` недоступен.
+- **`permission denied for database studs`.** Значит, была попытка выполнить `CREATE DATABASE` или `CREATE SCHEMA`. Работайте только в своей схеме.
+- **SSH не принимает ключ.** Домашняя папка доступна на запись другим; исправляется командой `chmod go-w ~`.
+- **`Адрес уже используется` в журнале.** Порт занял чужой процесс, пока наш был остановлен. `release.sh` сообщит об этом сразу; задайте другой порт строкой `SERVER_PORT=...` в `~/skhodim/shared/env`.
+- **`$'\r': command not found`.** Скрипт сохранён с переводами строк Windows. `.gitattributes` держит `*.sh` в LF, но копии, отредактированные вручную, нужно проверить.
+
+### Сторож
+
+helios каждую ночь в 05:00 завершает все процессы студентов, а `cron` и `at` студентам запрещены. Поэтому сайт поднимает GitHub: `.github/workflows/keepalive.yml` каждые 15 минут заходит на helios по SSH и запускает `deploy/keepalive.sh`. Тот проверяет `/api/v1/health` и при необходимости запускает последнюю версию и туннель. Если всё работает, сторож ничего не трогает.
+
+Расписание GitHub срабатывает только из ветки по умолчанию, поэтому сторож работает после слияния в `main`. Запустить его вручную можно в Actions → Keepalive → Run workflow.
+
+### CI/CD
+
+`.github/workflows/ci.yml` при каждом изменении собирает проект и прогоняет SQL-проверки, тесты бэкенда и браузерные тесты.
+
+Выкладка запускается автоматически из `main`. Вручную: Actions → CI/CD → Run workflow → deploy, или командой:
+
+```bash
+gh workflow run ci.yml --ref stage-4 -f deploy=true
+```
+
+После выкладки CI проверяет `/api/v1/health` по публичному адресу. Сам адрес показывается у окружения `helios` на GitHub.
+
+Для выкладки в настройках репозитория нужны:
+
+| Что | Где | Значение |
+|-----|-----|----------|
+| `HELIOS_SSH_KEY` | Secrets окружения `helios` | Приватная часть отдельного ключа только для выкладки |
+| `HELIOS_KNOWN_HOSTS` | Secrets окружения `helios` | Вывод `ssh-keyscan -p 2222 helios.se.ifmo.ru`, сверенный с отпечатком |
+| `HELIOS_USER` | Variables окружения `helios` | `s467667` |
+| `TUNA_SUBDOMAIN` | Variables окружения `helios` | `hearty-heron-4014`, постоянный поддомен аккаунта Tuna |
+
+## Отчёты
+
+Итоговый отчёт содержит разделы этапов, архитектуру, требования и их реализацию, данные и импорт, тестирование и 28 рисунков.
+
+```bash
+pip install python-docx docxcompose
+```
+
+Скриншоты для отчёта снимаются на настоящих событиях. Скрипт поднимает приложение, загружает афишу (нужен интернет, около 5 минут) и снимает экраны телефона и компьютера в `docs/screens`:
+
+```bash
+npm run screens --prefix frontend
+```
+
+```bash
+python docs/generate_final_report.py
+```
+
+Отчёт этапа 3 собирается отдельно, результат — `Skhodim_Etap_3_Report.docx`:
+
+```bash
+python docs/generate_report.py
+```
+
+## Ограничения
+
+- **Страница-предупреждение Tuna.** Посетители видят её перед сайтом; так работает бесплатный тариф.
+- **Ночная остановка.** В 05:00 helios завершает процессы студентов, и до прихода сторожа, обычно минут 15, сайт не отвечает. GitHub иногда запускает расписание с опозданием.
+- **Источники без официального API.** Если Кассир.ру или Афиша.ру поменяют разметку, импорт сообщит о сбое и не тронет каталог.
+- **Неполные данные.** Описания есть только у части событий, метро указано лишь у части площадок.
+- **Пароли демо-учёток публичны.** Они видны в Swagger и в этом файле, включая модератора; для учебного стенда это допустимо.
+
+Полный список ограничений и что осталось сделать: [docs/PROJECT.md, раздел 14](docs/PROJECT.md#14-ограничения-и-что-осталось).

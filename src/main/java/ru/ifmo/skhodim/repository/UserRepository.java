@@ -51,10 +51,14 @@ public class UserRepository {
     }
 
     @Transactional
-    public void updateProfile(long userId, String nickname, String avatarKey, String metro) {
+    public void updateProfile(
+            long userId, String nickname, String avatarKey, String metro,
+            String displayName, String bio, boolean notificationsEnabled
+    ) {
         jdbc.update(
-                "UPDATE user_profile SET nickname = ?, avatar_key = ?, metro = ? WHERE user_id = ?",
-                nickname, avatarKey, metro, userId);
+                "UPDATE user_profile SET nickname = ?, avatar_key = ?, metro = ?, display_name = ?, bio = ?, "
+                        + "notifications_enabled = ? WHERE user_id = ?",
+                nickname, avatarKey, metro, displayName, bio, notificationsEnabled, userId);
     }
 
     @Transactional

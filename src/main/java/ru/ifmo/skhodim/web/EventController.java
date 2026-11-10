@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import ru.ifmo.skhodim.domain.*;
 import ru.ifmo.skhodim.exception.UnauthorizedException;
 import ru.ifmo.skhodim.security.AuthFacade;
+import ru.ifmo.skhodim.domain.Views.*;
 import ru.ifmo.skhodim.service.CatalogService;
+import ru.ifmo.skhodim.service.PresentationService;
 import ru.ifmo.skhodim.service.FeedbackService;
 import ru.ifmo.skhodim.service.ReactionService;
 import ru.ifmo.skhodim.service.ShareCardService;
@@ -36,6 +38,7 @@ public class EventController {
     private final FeedbackService feedbackService;
     private final ShareCardService shareCardService;
     private final UserService userService;
+    private final PresentationService presentation;
 
     public EventController(
             AuthFacade auth,
@@ -43,7 +46,8 @@ public class EventController {
             ReactionService reactionService,
             FeedbackService feedbackService,
             ShareCardService shareCardService,
-            UserService userService
+            UserService userService,
+            PresentationService presentation
     ) {
         this.auth = auth;
         this.catalogService = catalogService;
@@ -51,6 +55,7 @@ public class EventController {
         this.feedbackService = feedbackService;
         this.shareCardService = shareCardService;
         this.userService = userService;
+        this.presentation = presentation;
     }
 
     @GetMapping
@@ -63,7 +68,7 @@ public class EventController {
                     bbox: широта 59.8–60.1, долгота 30.1–30.5 примерно СПб.
                     """
     )
-    public Object list(
+    public List<EventSummary> list(
             @Parameter(description = "Полнотекстовый поиск (русский)", example = "концерт")
             @RequestParam(required = false) String query,
             @Parameter(description = "id категорий через запятую", example = "1,3")
@@ -83,16 +88,27 @@ public class EventController {
             @Parameter(description = "true = персональная лента свайпера, нужен JWT")
             @RequestParam(defaultValue = "false") boolean forYou
     ) {
+        List<Long> categories = parseIds(categoryIds);
+        // Прошедшие сеансы в афише не показываем, если период не задан явно.
+        OffsetDateTime since = from == null ? OffsetDateTime.now() : from;
         if (forYou) {
             Long userId = auth.optionalUserId();
             if (userId == null) {
                 throw new UnauthorizedException("Authentication required for swipe feed");
             }
-            return catalogService.recommend(userId, limit, from, to);
+            boolean filtered = categories != null || isFree != null || metro != null
+                    || (query != null && !query.isBlank());
+            if (!filtered) {
+                return presentation.summariesOfRecommended(catalogService.recommend(userId, limit, since, to));
+            }
+            List<CatalogEntry> found = catalogService.search(
+                    blankToNull(query), categories, latMin, latMax, lonMin, lonMax,
+                    since, to, 200, 0, isFree, metro);
+            return presentation.unreactedSummaries(userId, found, limit);
         }
-        return catalogService.search(
-                query, parseIds(categoryIds), latMin, latMax, lonMin, lonMax,
-                from, to, limit, offset, isFree, metro);
+        return presentation.summariesOfCatalog(catalogService.search(
+                blankToNull(query), categories, latMin, latMax, lonMin, lonMax,
+                since, to, limit, offset, isFree, metro));
     }
 
     @GetMapping("/{eventId}")
@@ -101,10 +117,10 @@ public class EventController {
             summary = "Карточка события",
             description = "Площадка, сеансы, категории, теги, ticketUrl. Сеансы нужны для «хочу пойти» и заявки."
     )
-    public CatalogService.EventCard card(
-            @Parameter(description = "Посев: 1 или 10", example = "10") @PathVariable long eventId
+    public EventDetails card(
+            @Parameter(description = "id события", example = "10") @PathVariable long eventId
     ) {
-        return catalogService.getCard(eventId);
+        return presentation.details(eventId, auth.optionalUserId());
     }
 
     @PostMapping("/{eventId}/swipe")
@@ -126,10 +142,10 @@ public class EventController {
             summary = "Кто ещё идёт",
             description = "Пустой список, если у вас нет активного «хочу пойти» на это событие (FR-3, только взаимно). Для события 10 у demo1 уже есть отметка — увидите user2."
     )
-    public List<GoingPerson> going(
+    public List<GoingPersonView> going(
             @Parameter(description = "Событие с намерениями в посеве", example = "10") @PathVariable long eventId
     ) {
-        return reactionService.going(auth.require().id(), eventId);
+        return presentation.going(auth.require().id(), eventId);
     }
 
     @PostMapping("/{eventId}/going")
@@ -153,8 +169,10 @@ public class EventController {
             @Parameter(description = "id сеанса; пусто = первый живой сеанс карточки")
             @RequestParam(required = false) Long sessionId
     ) {
-        long resolved = resolveSession(eventId, sessionId);
-        reactionService.setIntention(auth.require().id(), resolved, false);
+        long userId = auth.require().id();
+        Long active = sessionId != null ? sessionId : presentation.eventState(userId, eventId).goingSessionId();
+        long resolved = resolveSession(eventId, active);
+        reactionService.setIntention(userId, resolved, false);
         return Map.of("sessionId", resolved, "enabled", false);
     }
 
@@ -177,11 +195,11 @@ public class EventController {
     @GetMapping("/{eventId}/comments")
     @SecurityRequirements
     @Operation(summary = "Комментарии", description = "Без JWT. Это записи без rating.")
-    public List<EventFeedback> comments(
+    public List<FeedbackView> comments(
             @Parameter(example = "1") @PathVariable long eventId
     ) {
-        return feedbackService.visibleFeedback(eventId).stream()
-                .filter(item -> !item.isReview())
+        return presentation.eventFeedback(eventId).stream()
+                .filter(item -> item.rating() == null)
                 .toList();
     }
 
@@ -208,11 +226,11 @@ public class EventController {
     @GetMapping("/{eventId}/reviews")
     @SecurityRequirements
     @Operation(summary = "Отзывы", description = "Записи с rating 1–5. Без JWT.")
-    public List<EventFeedback> reviews(
+    public List<FeedbackView> reviews(
             @Parameter(example = "1") @PathVariable long eventId
     ) {
-        return feedbackService.visibleFeedback(eventId).stream()
-                .filter(EventFeedback::isReview)
+        return presentation.eventFeedback(eventId).stream()
+                .filter(item -> item.rating() != null)
                 .toList();
     }
 
@@ -233,11 +251,18 @@ public class EventController {
         if (sessionId != null) {
             return sessionId;
         }
+        // Берём ближайший незавершённый сеанс: отметка на прошедший сеанс не имеет смысла.
+        OffsetDateTime now = OffsetDateTime.now();
         return catalogService.getCard(eventId).sessions().stream()
                 .filter(s -> !s.isCancelled())
+                .filter(s -> (s.endsAt() != null ? s.endsAt() : s.startsAt()).isAfter(now))
                 .map(EventSession::id)
                 .findFirst()
                 .orElseThrow(() -> new ru.ifmo.skhodim.exception.NotFoundException("No session for event " + eventId));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static List<Long> parseIds(String raw) {

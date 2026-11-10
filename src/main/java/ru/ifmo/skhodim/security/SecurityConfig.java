@@ -36,12 +36,12 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, exception) -> {
                             response.setStatus(401);
                             response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"error\":\"Authentication required\"}");
+                            response.getWriter().write("{\"error\":\"Войдите, чтобы продолжить\"}");
                         })
                         .accessDeniedHandler((request, response, exception) -> {
                             response.setStatus(403);
                             response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"error\":\"Forbidden\"}");
+                            response.getWriter().write("{\"error\":\"Недостаточно прав\"}");
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
@@ -53,6 +53,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories", "/api/v1/metros", "/api/v1/feed/comments")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/events/*/comments", "/api/v1/events/*/reviews")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("MODERATOR")

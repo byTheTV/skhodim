@@ -1,0 +1,44 @@
+name: Keepalive
+
+# helios каждую ночь в 05:00 завершает процессы студентов, а cron и at там запрещены.
+# Поэтому каждые 15 минут GitHub заходит на сервер и поднимает приложение и туннель, если их нет.
+# Расписание GitHub работает только из ветки по умолчанию (main).
+on:
+  schedule:
+    - cron: '4,19,34,49 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: helios-deploy
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: helios
+      # Проверка каждые 15 минут не должна засорять историю выкладок.
+      deployment: false
+    steps:
+      - name: Настроить SSH
+        env:
+          SSH_KEY: ${{ secrets.HELIOS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.HELIOS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Поднять сайт, если он упал
+        env:
+          HELIOS_USER: ${{ vars.HELIOS_USER }}
+          TUNA_SUBDOMAIN: ${{ vars.TUNA_SUBDOMAIN }}
+        run: |
+          ssh -p 2222 -o ConnectTimeout=30 "$HELIOS_USER@helios.se.ifmo.ru" \
+            "TUNA_SUBDOMAIN='$TUNA_SUBDOMAIN' sh skhodim/incoming/deploy/keepalive.sh" | tee keepalive.log
+          url=$(sed -n 's/^Адрес: //p' keepalive.log | tail -1)
+          curl -fsS -m 20 "$url/api/v1/health" | grep -q '"status":"ok"'
+          echo "Сайт доступен: $url" >> "$GITHUB_STEP_SUMMARY"

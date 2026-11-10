@@ -20,6 +20,23 @@ public class ImportRepository {
         this.jdbc = jdbc;
     }
 
+    /** Источник появляется при первом запуске импорта. Счётчик id после заливки данных может отставать, поэтому id задан явно. */
+    public void ensureSource(String code, String name, String baseUrl, int mediaRank) {
+        jdbc.update(
+                "INSERT INTO catalog_source (id, code, name, base_url, media_rank) "
+                        + "SELECT COALESCE(max(id), 0) + 1, ?, ?, ?, ? FROM catalog_source "
+                        + "ON CONFLICT (code) DO UPDATE SET media_rank = EXCLUDED.media_rank",
+                code, name, baseUrl, mediaRank);
+    }
+
+    public void ensureCategory(String slug, String name) {
+        jdbc.update(
+                "INSERT INTO category (id, slug, name) "
+                        + "SELECT COALESCE(max(id), 0) + 1, ?, ? FROM category "
+                        + "ON CONFLICT (slug) DO NOTHING",
+                slug, name);
+    }
+
     public long startRun(long sourceId) {
         return jdbc.queryForObject(
                 "INSERT INTO import_run (source_id, status, started_at) VALUES (?, 'RUNNING', now()) RETURNING id",
@@ -46,10 +63,26 @@ public class ImportRepository {
         return count != null && count > 0;
     }
 
+    /**
+     * Площадка другого источника с тем же названием («СК «Юбилейный»» и «СК Юбилейный») не дублируется:
+     * используется уже существующая, пустые адрес и метро у неё дополняются.
+     */
     public long upsertPlace(
             long sourceId, String externalId, String name, String address, String metro,
             java.math.BigDecimal lat, java.math.BigDecimal lon
     ) {
+        boolean own = !jdbc.queryForList(
+                "SELECT id FROM place WHERE source_id = ? AND external_id = ?", Long.class, sourceId, externalId).isEmpty();
+        if (!own) {
+            Long alias = jdbc.queryForObject("SELECT find_place_alias(?)", Long.class, name);
+            if (alias != null) {
+                jdbc.update(
+                        "UPDATE place SET address = coalesce(address, ?), metro = coalesce(metro, ?), "
+                                + "latitude = coalesce(latitude, ?), longitude = coalesce(longitude, ?) WHERE id = ?",
+                        address, metro, lat, lon, alias);
+                return alias;
+            }
+        }
         return jdbc.queryForObject(
                 """
                 INSERT INTO place (source_id, external_id, name, address, metro, latitude, longitude)
@@ -94,19 +127,89 @@ public class ImportRepository {
                 priceFrom, priceText, coverUrl, sourceUrl, ticketUrl);
     }
 
+    /** Сеанс, который другой источник уже привёз на то же время, не повторяется (upsert_event_session). */
     public void upsertSession(long eventId, String sourceKey, java.time.OffsetDateTime startsAt,
                               java.time.OffsetDateTime endsAt) {
-        jdbc.update(
-                """
-                INSERT INTO event_session (event_id, source_key, starts_at, ends_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT (event_id, source_key) DO UPDATE
-                    SET starts_at = EXCLUDED.starts_at,
-                        ends_at = EXCLUDED.ends_at
-                """,
+        call("SELECT upsert_event_session(?, ?, ?, ?)",
                 eventId, sourceKey,
                 java.sql.Timestamp.from(startsAt.toInstant()),
                 endsAt == null ? null : java.sql.Timestamp.from(endsAt.toInstant()));
+    }
+
+    public Optional<Long> findLinkedEvent(long sourceId, String externalId) {
+        return jdbc.queryForList(
+                "SELECT event_id FROM event_link WHERE source_id = ? AND external_id = ?",
+                Long.class, sourceId, externalId).stream().findFirst();
+    }
+
+    /** Данные одного источника о событии; поля самого события собирает refresh_event. */
+    public void upsertLink(
+            long eventId, long sourceId, String externalId, String title, String description, String coverUrl,
+            Boolean isFree, java.math.BigDecimal priceFrom, String priceText, Integer ageLimit,
+            String sourceUrl, String ticketUrl
+    ) {
+        jdbc.update(
+                """
+                INSERT INTO event_link (
+                    event_id, source_id, external_id, title, description, cover_url, is_free,
+                    price_from, price_text, age_limit, source_url, ticket_url
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (source_id, external_id) DO UPDATE
+                    SET title = EXCLUDED.title,
+                        description = EXCLUDED.description,
+                        cover_url = EXCLUDED.cover_url,
+                        is_free = EXCLUDED.is_free,
+                        price_from = EXCLUDED.price_from,
+                        price_text = EXCLUDED.price_text,
+                        age_limit = EXCLUDED.age_limit,
+                        source_url = EXCLUDED.source_url,
+                        ticket_url = EXCLUDED.ticket_url,
+                        imported_at = now()
+                """,
+                eventId, sourceId, externalId, title, description, coverUrl, isFree,
+                priceFrom, priceText, ageLimit, sourceUrl, ticketUrl);
+    }
+
+    /** Площадку события задаёт его основной источник; остальные только дополняют пустую. */
+    public void updateEventPlace(long eventId, Long placeId, long sourceId, String externalId) {
+        if (placeId == null) {
+            return;
+        }
+        jdbc.update(
+                "UPDATE event SET place_id = ? WHERE id = ? "
+                        + "AND (place_id IS NULL OR (source_id = ? AND external_id = ?))",
+                placeId, eventId, sourceId, externalId);
+    }
+
+    public void refreshEvent(long eventId) {
+        call("SELECT refresh_event(?)", eventId);
+    }
+
+    /** [склеено, отправлено модератору]. */
+    public int[] resolveDuplicates() {
+        return jdbc.queryForObject("SELECT merged, queued FROM resolve_duplicates()",
+                (rs, n) -> new int[]{rs.getInt("merged"), rs.getInt("queued")});
+    }
+
+    /** Пара, ожидающая решения: [event_a, event_b]. */
+    public Optional<long[]> findPendingDuplicate(long duplicateId) {
+        return jdbc.query(
+                "SELECT event_a, event_b FROM event_duplicate WHERE id = ? AND status = 'NEW'",
+                (rs, n) -> new long[]{rs.getLong("event_a"), rs.getLong("event_b")},
+                duplicateId).stream().findFirst();
+    }
+
+    public void mergeEvents(long keep, long drop, long moderatorId, String reason) {
+        call("SELECT merge_events(?, ?, ?, ?)", keep, drop, moderatorId, reason);
+    }
+
+    public void markDistinct(long duplicateId, long moderatorId) {
+        call("SELECT mark_distinct(?, ?)", duplicateId, moderatorId);
+    }
+
+    /** Вызов функции, которая ничего не возвращает. */
+    private void call(String sql, Object... args) {
+        jdbc.query(sql, (org.springframework.jdbc.core.ResultSetExtractor<Void>) rs -> null, args);
     }
 
     public void ensureTag(String name) {

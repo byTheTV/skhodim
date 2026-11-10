@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.ifmo.skhodim.domain.AppUser;
+import ru.ifmo.skhodim.domain.UserProfile;
 import ru.ifmo.skhodim.security.JwtService;
 import ru.ifmo.skhodim.service.UserService;
 
@@ -35,6 +36,11 @@ public class AuthController {
     )
     public Map<String, Object> register(@RequestBody RegisterBody body) {
         long userId = userService.register(body.email(), body.password(), body.nickname(), body.categoryIds());
+        if (body.displayName() != null && !body.displayName().isBlank()) {
+            UserProfile profile = userService.getProfile(userId);
+            userService.updateProfile(userId, profile.nickname(), profile.avatarKey(), profile.metro(),
+                    body.displayName(), profile.bio(), profile.notificationsEnabled(), null);
+        }
         AppUser user = userService.getUser(userId);
         return tokenResponse(user);
     }
@@ -47,12 +53,6 @@ public class AuthController {
     )
     public Map<String, Object> login(@RequestBody LoginBody body) {
         return tokenResponse(userService.authenticate(body.email(), body.password()));
-    }
-
-    @PostMapping("/logout")
-    @Operation(summary = "Выход", description = "Сервер JWT не хранит. Клиент просто забывает токен.")
-    public Map<String, String> logout() {
-        return Map.of("status", "ok");
     }
 
     private Map<String, Object> tokenResponse(AppUser user) {
@@ -70,7 +70,9 @@ public class AuthController {
             @Schema(description = "Минимум 8 символов", example = "Demo12345!") String password,
             @Schema(description = "Ник в профиле", example = "newbie") String nickname,
             @Schema(description = "3–5 id категорий (1 концерт … 8 мастер-класс)", example = "[1, 2, 3]")
-            List<Long> categoryIds
+            List<Long> categoryIds,
+            @Schema(description = "Отображаемое имя, можно не указывать", example = "Никита", nullable = true)
+            String displayName
     ) {}
 
     @Schema(name = "LoginRequest", requiredProperties = {"email", "password"})

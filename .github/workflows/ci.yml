@@ -1,0 +1,130 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, stage-4]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Выложить на helios после успешных тестов
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PGHOST: localhost
+  PGUSER: postgres
+  PGPASSWORD: postgres
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Подготовить тестовую БД
+        run: |
+          psql -d postgres -c "CREATE DATABASE skhodim_test ENCODING 'UTF8' TEMPLATE template0"
+          for f in 01_schema 02_logic 03_queries_indexes 04_seed 08_stage4 11_sources; do
+            psql -d skhodim_test -q -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/$f.sql
+          done
+          psql -d skhodim_test -v ON_ERROR_STOP=1 -v app_schema=skhodim -f sql/05_tests.sql
+
+      - name: Сборка и тесты backend
+        run: mvn -B verify
+
+      - name: Браузерные тесты
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-results
+          path: frontend/test-results/
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skhodim-jar
+          path: target/skhodim.jar
+          retention-days: 7
+
+  deploy:
+    needs: test
+    # Выкладка только из main или по ручному запуску, с защитой секретов через окружение.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    runs-on: ubuntu-latest
+    environment:
+      name: helios
+      url: ${{ steps.release.outputs.url }}
+    concurrency: helios-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: skhodim-jar
+          path: target
+
+      - name: Настроить SSH
+        env:
+          SSH_KEY: ${{ secrets.HELIOS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.HELIOS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Выложить
+        id: release
+        shell: bash
+        env:
+          HELIOS_USER: ${{ vars.HELIOS_USER }}
+          TUNA_SUBDOMAIN: ${{ vars.TUNA_SUBDOMAIN }}
+        run: |
+          bash deploy/deploy.sh --no-build | tee deploy.log
+          url=$(sed -n 's/^Адрес: //p' deploy.log | tail -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # Проверка из интернета: запрос идёт с сервера GitHub через туннель Tuna на helios.
+      - name: Проверить публичный адрес
+        env:
+          URL: ${{ steps.release.outputs.url }}
+        run: |
+          [ -n "$URL" ] || { echo "Туннель не сообщил адрес"; exit 1; }
+          for i in $(seq 1 10); do
+            if curl -fsS -m 15 "$URL/api/v1/health" | grep -q '"status":"ok"'; then
+              echo "Сайт доступен: $URL" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Сайт не отвечает по адресу $URL"
+          exit 1

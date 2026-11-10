@@ -4,7 +4,7 @@
 #   SKHODIM_SCHEMA=s467667 SKHODIM_DB_PASSWORD=*** java -jar skhodim.jar --spring.profiles.active=helios
 # Снаружи: ssh -L 8080:127.0.0.1:8080 -p 2222 s467667@helios.se.ifmo.ru → http://localhost:8080/api/health
 server:
-  port: ${SERVER_PORT:18080}
+  port: ${SERVER_PORT:28467}
   address: 127.0.0.1
 
 spring:

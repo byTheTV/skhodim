@@ -1,4 +1,7 @@
 target/
 src/test/resources/helios.local.properties
 *.log
-
+node_modules/
+frontend/test-results/
+frontend/playwright-report/
+.env.local

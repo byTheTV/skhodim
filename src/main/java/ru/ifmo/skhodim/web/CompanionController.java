@@ -5,11 +5,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
-import ru.ifmo.skhodim.domain.CompanionRequest;
+import ru.ifmo.skhodim.domain.Views.RequestView;
 import ru.ifmo.skhodim.domain.ConversationParticipant;
 import ru.ifmo.skhodim.domain.Message;
 import ru.ifmo.skhodim.security.AuthFacade;
 import ru.ifmo.skhodim.service.CompanionService;
+import ru.ifmo.skhodim.service.PresentationService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,27 +23,42 @@ public class CompanionController {
 
     private final AuthFacade auth;
     private final CompanionService companionService;
+    private final PresentationService presentation;
 
-    public CompanionController(AuthFacade auth, CompanionService companionService) {
+    public CompanionController(AuthFacade auth, CompanionService companionService, PresentationService presentation) {
         this.auth = auth;
         this.companionService = companionService;
+        this.presentation = presentation;
     }
 
     @GetMapping("/companion-requests")
     @Operation(
             summary = "Мои заявки",
-            description = "status: PENDING | ACCEPTED | REJECTED | CANCELLED. В посеве у demo1 есть PENDING на событие 12 и ACCEPTED на 10."
+            description = "status: PENDING | ACCEPTED | REJECTED | CANCELLED. Без параметра возвращаются все заявки."
     )
-    public Map<String, List<CompanionRequest>> list(
+    public Map<String, List<RequestView>> list(
             @Parameter(description = "Фильтр статуса", example = "PENDING",
                     schema = @Schema(allowableValues = {"PENDING", "ACCEPTED", "REJECTED", "CANCELLED"}))
-            @RequestParam(defaultValue = "PENDING") String status
+            @RequestParam(required = false) String status
     ) {
-        long userId = auth.require().id();
-        Map<String, List<CompanionRequest>> body = new LinkedHashMap<>();
-        body.put("incoming", companionService.incoming(userId, status));
-        body.put("outgoing", companionService.outgoing(userId, status));
+        List<RequestView> all = presentation.requests(auth.require().id(), status);
+        Map<String, List<RequestView>> body = new LinkedHashMap<>();
+        body.put("incoming", all.stream().filter(r -> !r.outgoing()).toList());
+        body.put("outgoing", all.stream().filter(RequestView::outgoing).toList());
         return body;
+    }
+
+    @GetMapping("/companion-requests/{requestId}")
+    @Operation(summary = "Одна заявка", description = "Для экранов «Приглашение отправлено» и «Приняла». Чужая заявка даёт 404.")
+    public RequestView one(@PathVariable long requestId) {
+        return presentation.request(auth.require().id(), requestId);
+    }
+
+    @PostMapping("/companion-requests/{requestId}/cancel")
+    @Operation(summary = "Отозвать заявку", description = "Только отправитель и только пока статус PENDING.")
+    public Map<String, String> cancel(@PathVariable long requestId) {
+        presentation.cancelRequest(auth.require().id(), requestId);
+        return Map.of("status", "ok");
     }
 
     @PostMapping("/companion-requests")

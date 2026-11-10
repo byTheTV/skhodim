@@ -2,10 +2,10 @@
   "info": {
     "name": "Skhodim API v1",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "SSH-туннель: ssh -L 18080:127.0.0.1:18080 -p 2222 s467667@helios.se.ifmo.ru\nSwagger: http://localhost:18080/swagger-ui.html\nДемо: demo1@example.org / Demo12345!\nМодератор: demo100@example.org / Demo12345!"
+    "description": "SSH-туннель: ssh -L 28467:127.0.0.1:28467 -p 2222 s467667@helios.se.ifmo.ru\nSwagger: http://localhost:28467/swagger-ui.html\nДемо: demo1@example.org / Demo12345!\nМодератор: demo100@example.org / Demo12345!"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:18080" },
+    { "key": "baseUrl", "value": "http://localhost:28467" },
     { "key": "token", "value": "" }
   ],
   "item": [
