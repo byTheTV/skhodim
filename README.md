@@ -143,6 +143,14 @@ ssh -L 18080:127.0.0.1:18080 -p 2222 s467667@helios.se.ifmo.ru
 
 После этого приложение открывается на <http://localhost:18080>. Журнал: `~/skhodim/shared/app.log`.
 
+Публичный адрес <https://hearty-heron-4014.a.tuna.free> даёт туннель [Tuna](https://tuna.am), запущенный на самом helios. Другие сервисы не подходят: helios выпускает наружу только порт 443, а ngrok не принимает подключения с российских IP. `deploy.sh` после каждой выкладки поднимает туннель, если тот не работает. После перезагрузки helios его нужно запустить вручную:
+
+```bash
+ssh -p 2222 s467667@helios.se.ifmo.ru 'sh ~/skhodim/incoming/deploy/tunnel.sh start'
+```
+
+Один раз туннель настраивается вручную: FreeBSD-сборка `tuna` с проверенной подписью GPG лежит в `~/skhodim/tunnel/tuna/`, вход выполнен командой `tuna login --no-browser --insecure-storage`. Перед сайтом Tuna показывает свою страницу-предупреждение.
+
 ### CI/CD
 
 `.github/workflows/ci.yml` при каждом изменении собирает проект и запускает все тесты. Выкладка идёт из `main` или вручную (Actions → CI/CD → Run workflow → deploy). Для неё в настройках репозитория нужны:
@@ -152,8 +160,9 @@ ssh -L 18080:127.0.0.1:18080 -p 2222 s467667@helios.se.ifmo.ru
 | `HELIOS_SSH_KEY` | Secrets окружения `helios` | Приватная часть отдельного ключа только для выкладки |
 | `HELIOS_KNOWN_HOSTS` | Secrets окружения `helios` | Вывод `ssh-keyscan -p 2222 helios.se.ifmo.ru`, сверенный с отпечатком |
 | `HELIOS_USER` | Variables окружения `helios` | `s467667` |
+| `TUNA_SUBDOMAIN` | Variables окружения `helios` | `hearty-heron-4014`, постоянный поддомен аккаунта Tuna |
 
-Выкладка из GitHub не проверялась: неизвестно, пропустит ли helios подключение из сети GitHub. Если нет, запускайте `deploy/deploy.sh` со своего компьютера. Доступ с helios к `spb.kassir.ru` и `www.afisha.ru` тоже нужно проверить после выкладки кнопкой импорта: при сбое он будет виден в истории запусков.
+Выкладка из GitHub проверена: helios принимает подключение из сети GitHub. После выкладки CI отдельным шагом проверяет `/api/v1/health` по публичному адресу, а адрес показывается у окружения `helios` на GitHub. Доступ с helios к `spb.kassir.ru` и `www.afisha.ru` нужно проверить кнопкой импорта: при сбое он будет виден в истории запусков.
 
 ## Отчёты
 

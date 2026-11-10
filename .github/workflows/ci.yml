@@ -81,7 +81,9 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
       || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     runs-on: ubuntu-latest
-    environment: helios
+    environment:
+      name: helios
+      url: ${{ steps.release.outputs.url }}
     concurrency: helios-deploy
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +103,28 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Выложить
+        id: release
+        shell: bash
         env:
           HELIOS_USER: ${{ vars.HELIOS_USER }}
-        run: bash deploy/deploy.sh --no-build
+          TUNA_SUBDOMAIN: ${{ vars.TUNA_SUBDOMAIN }}
+        run: |
+          bash deploy/deploy.sh --no-build | tee deploy.log
+          url=$(sed -n 's/^Адрес: //p' deploy.log | tail -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # Проверка из интернета: запрос идёт с сервера GitHub через туннель Tuna на helios.
+      - name: Проверить публичный адрес
+        env:
+          URL: ${{ steps.release.outputs.url }}
+        run: |
+          [ -n "$URL" ] || { echo "Туннель не сообщил адрес"; exit 1; }
+          for i in $(seq 1 10); do
+            if curl -fsS -m 15 "$URL/api/v1/health" | grep -q '"status":"ok"'; then
+              echo "Сайт доступен: $URL" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Сайт не отвечает по адресу $URL"
+          exit 1
