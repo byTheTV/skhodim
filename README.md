@@ -6,7 +6,7 @@
 
 Смахивай события, отмечай, куда хочешь пойти, находи тех, кто идёт туда же, и договаривайся в чате.
 
-[![CI/CD](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml/badge.svg?branch=stage-4)](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/byTheTV/skhodim/actions/workflows/ci.yml)
 ![Java 17](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot 3.3](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pl%2Fpgsql-4169E1?logo=postgresql&logoColor=white)
@@ -357,7 +357,7 @@ ssh -L 28467:127.0.0.1:28467 -p 2222 s467667@helios.se.ifmo.ru
 
 helios каждую ночь в 05:00 завершает все процессы студентов, а `cron` и `at` студентам запрещены. Поэтому сайт поднимает GitHub: `.github/workflows/keepalive.yml` каждые 15 минут заходит на helios по SSH и запускает `deploy/keepalive.sh`. Тот проверяет `/api/v1/health` и при необходимости запускает последнюю версию и туннель. Если всё работает, сторож ничего не трогает.
 
-Расписание GitHub срабатывает только из ветки по умолчанию, поэтому сторож работает после слияния в `main`. Запустить его вручную можно в Actions → Keepalive → Run workflow.
+Расписание GitHub срабатывает только из ветки по умолчанию, поэтому файл сторожа должен быть в `main`. Запустить его вручную можно в Actions → Keepalive → Run workflow.
 
 ### CI/CD
 
@@ -366,7 +366,7 @@ helios каждую ночь в 05:00 завершает все процессы
 Выкладка запускается автоматически из `main`. Вручную: Actions → CI/CD → Run workflow → deploy, или командой:
 
 ```bash
-gh workflow run ci.yml --ref stage-4 -f deploy=true
+gh workflow run ci.yml --ref main -f deploy=true
 ```
 
 После выкладки CI проверяет `/api/v1/health` по публичному адресу. Сам адрес показывается у окружения `helios` на GitHub.
